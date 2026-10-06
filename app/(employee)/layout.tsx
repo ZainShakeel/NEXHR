@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCompany } from "@/hooks/useCompany";
 import {
   LayoutDashboard, Clock, Calendar, FileText, User,
@@ -21,11 +21,31 @@ const nav = [
 
 export default function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { userName, companyName } = useCompany();
+  const router = useRouter();
+  const { userName, companyName, role, status } = useCompany();
   const [open, setOpen] = useState(false);
 
   const isLogin = pathname === "/employee/login";
+
+  useEffect(() => {
+    if (isLogin) return;
+    if (status === "unauthenticated") {
+      router.replace("/employee/login");
+    } else if (status === "authenticated" && role && role !== "EMPLOYEE") {
+      router.replace("/employee/login");
+    }
+  }, [status, role, isLogin, router]);
+
   if (isLogin) return <>{children}</>;
+
+  // Show nothing while checking auth (middleware handles the actual redirect)
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <div className="min-h-screen bg-[#064E3B] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const initials = userName
     ? userName.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()
