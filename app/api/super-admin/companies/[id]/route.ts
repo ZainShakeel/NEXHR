@@ -73,7 +73,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       await tx.user.deleteMany({ where: { companyId: id } });
       await tx.department.deleteMany({ where: { companyId: id } });
       await tx.shift.deleteMany({ where: { companyId: id } });
-      await tx.officeLocation.deleteMany({ where: { companyId: id } });
+      await tx.office.deleteMany({ where: { companyId: id } });
       await tx.company.delete({ where: { id } });
     });
     return NextResponse.json({ success: true });
