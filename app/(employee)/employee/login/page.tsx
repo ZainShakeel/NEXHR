@@ -22,23 +22,14 @@ export default function EmployeeLogin() {
     const result = await signIn("credentials", {
       email,
       password,
-      redirect: false,
+      portalType: "employee",
+      redirect:   false,
     });
 
     setLoading(false);
 
-    if (result?.error) {
-      setError("Invalid email or password. Please try again.");
-      return;
-    }
-
-    // Verify the user is an employee (not HR/admin)
-    const res = await fetch("/api/auth/session");
-    const session = await res.json();
-    const role = session?.user?.role;
-
-    if (role !== "EMPLOYEE") {
-      setError("This portal is for employees only. HR/Admin please use the company login.");
+    if (result?.error || !result?.ok) {
+      setError("Invalid email or password. This portal is for employees only.");
       return;
     }
 

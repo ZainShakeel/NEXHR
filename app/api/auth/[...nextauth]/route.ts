@@ -10,6 +10,8 @@ const handler = NextAuth({
       credentials: {
         email:    { label: "Email",    type: "email" },
         password: { label: "Password", type: "password" },
+        domain:   { label: "Domain",   type: "text" },
+        portalType: { label: "Portal", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
@@ -23,6 +25,19 @@ const handler = NextAuth({
 
         const valid = await bcrypt.compare(credentials.password, user.password);
         if (!valid) return null;
+
+        // Employee portal: must be EMPLOYEE role
+        if (credentials.portalType === "employee") {
+          if (user.role !== "EMPLOYEE") return null;
+        }
+
+        // HR portal: domain must match company domain
+        if (credentials.portalType === "hr" && credentials.domain) {
+          const domain = credentials.domain.toLowerCase().trim();
+          if (user.company.domain.toLowerCase() !== domain) return null;
+          // HR portal: must NOT be employee or super admin
+          if (user.role === "EMPLOYEE" || user.role === "SUPER_ADMIN") return null;
+        }
 
         await prisma.user.update({
           where: { id: user.id },

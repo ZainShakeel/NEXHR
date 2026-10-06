@@ -21,16 +21,24 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
+    if (!form.domain.trim()) {
+      setError("Please enter your company domain.");
+      setLoading(false);
+      return;
+    }
+
     const result = await signIn("credentials", {
-      email:    form.email,
-      password: form.password,
-      redirect: false,
+      email:      form.email,
+      password:   form.password,
+      domain:     form.domain.trim().toLowerCase(),
+      portalType: "hr",
+      redirect:   false,
     });
 
     if (result?.ok) {
       window.location.href = "/dashboard";
     } else {
-      setError("Invalid email or password. Please try again.");
+      setError("Invalid domain, email or password. Please check your credentials.");
       setLoading(false);
     }
   };
