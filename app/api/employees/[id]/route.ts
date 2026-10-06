@@ -47,3 +47,24 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   return NextResponse.json(updated);
 }
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { searchParams } = new URL(req.url);
+  const companyId = searchParams.get("companyId");
+  if (!companyId) return NextResponse.json({ error: "companyId required" }, { status: 400 });
+
+  const emp = await prisma.employee.findFirst({ where: { id, companyId } });
+  if (!emp) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.leaveBalance.deleteMany({ where: { employeeId: id } });
+    await tx.leaveRequest.deleteMany({ where: { employeeId: id } });
+    await tx.attendance.deleteMany({ where: { employeeId: id } });
+    await tx.salarySlip.deleteMany({ where: { employeeId: id } });
+    await tx.employee.delete({ where: { id } });
+    if (emp.userId) await tx.user.delete({ where: { id: emp.userId } });
+  });
+
+  return NextResponse.json({ success: true });
+}

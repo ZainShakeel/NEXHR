@@ -27,3 +27,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const { id, name, description } = await req.json();
+    const dept = await prisma.department.update({ where: { id }, data: { name, description } });
+    return NextResponse.json(dept);
+  } catch (e) {
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const id = req.nextUrl.searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+    // Move employees out of this department first
+    await prisma.employee.updateMany({ where: { departmentId: id }, data: { departmentId: null } });
+    await prisma.department.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}

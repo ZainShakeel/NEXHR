@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   Building2, Users, Plus, Loader2, X, CheckCircle2, XCircle,
-  ToggleLeft, ToggleRight, Search, Eye, EyeOff, ArrowUpRight, Globe
+  ToggleLeft, ToggleRight, Search, Eye, EyeOff, ArrowUpRight, Globe, Trash2, AlertTriangle
 } from "lucide-react";
 
 type Company = {
@@ -56,6 +56,8 @@ export default function SuperAdminCompaniesPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [search, setSearch] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<Company | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     name: "", domain: "", adminEmail: "", adminPassword: "", adminName: "",
   });
@@ -94,6 +96,15 @@ export default function SuperAdminCompaniesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, isActive: !isActive }),
     });
+    load();
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    setDeleting(true);
+    await fetch(`/api/super-admin/companies/${deleteConfirm.id}`, { method: "DELETE" });
+    setDeleting(false);
+    setDeleteConfirm(null);
     load();
   };
 
@@ -230,12 +241,54 @@ export default function SuperAdminCompaniesPage() {
                             ? <ToggleRight size={20} className="text-[#16A34A]" />
                             : <ToggleLeft size={20} className="text-[#9BB8A8]" />}
                         </button>
+                        <button
+                          onClick={() => setDeleteConfirm(c)}
+                          className="text-[#9BB8A8] hover:text-red-500 transition-colors"
+                          title="Delete company"
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle size={22} className="text-red-500" />
+            </div>
+            <h3 className="text-base font-bold text-[#0D1F15] text-center mb-1">Delete Company?</h3>
+            <p className="text-xs text-[#6B8C7A] text-center mb-1">
+              You are about to permanently delete
+            </p>
+            <p className="text-sm font-bold text-[#0D1F15] text-center mb-2">{deleteConfirm.name}</p>
+            <p className="text-xs text-red-600 text-center mb-5 bg-red-50 rounded-xl px-3 py-2">
+              This will delete all employees, attendance, payroll, and data for this company. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 py-2.5 bg-red-500 text-white text-sm font-bold rounded-xl hover:bg-red-600 disabled:opacity-50 transition-colors"
+              >
+                {deleting ? "Deleting…" : "Yes, Delete"}
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+                className="flex-1 py-2.5 bg-[#F4F8F6] text-[#0D1F15] text-sm font-semibold rounded-xl hover:bg-[#E5EDE9] disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
