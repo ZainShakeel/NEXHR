@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* NexHR Brand Colors */
+    --green-950: 2 44 26;
+    --green-900: 6 78 59;
+    --green-800: 6 95 70;
+    --green-700: 4 120 87;
+    --green-600: 5 150 105;
+    --green-500: 22 163 74;
+    --green-400: 34 197 94;
+    --green-100: 209 250 229;
+    --green-50: 236 253 245;
+
+    /* Surfaces */
+    --background: 247 249 248;
+    --surface: 255 255 255;
+    --surface-2: 240 244 242;
+
+    /* Text */
+    --text-primary: 23 33 28;
+    --text-secondary: 74 94 85;
+    --text-muted: 138 163 152;
+
+    /* Border */
+    --border: 229 234 231;
+    --border-strong: 200 213 207;
+
+    /* Sidebar */
+    --sidebar: 6 78 59;
+    --sidebar-foreground: 167 197 185;
+    --sidebar-active: 255 255 255;
+
+    /* Semantic */
+    --success: 22 163 74;
+    --warning: 217 119 6;
+    --danger: 220 38 38;
+    --info: 37 99 235;
+
+    /* Shadcn compatibility */
+    --foreground: 23 33 28;
+    --card: 255 255 255;
+    --card-foreground: 23 33 28;
+    --popover: 255 255 255;
+    --popover-foreground: 23 33 28;
+    --primary: 22 163 74;
+    --primary-foreground: 255 255 255;
+    --secondary: 240 244 242;
+    --secondary-foreground: 23 33 28;
+    --muted: 240 244 242;
+    --muted-foreground: 138 163 152;
+    --accent: 236 253 245;
+    --accent-foreground: 6 78 59;
+    --destructive: 220 38 38;
+    --destructive-foreground: 255 255 255;
+    --input: 229 234 231;
+    --ring: 22 163 74;
+    --radius: 0.625rem;
+  }
+
+  * {
+    border-color: rgb(var(--border));
+    box-sizing: border-box;
+  }
+
+  body {
+    background: rgb(var(--background));
+    color: rgb(var(--text-primary));
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer utilities {
+  /* Scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--border-strong)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgb(var(--border-strong));
+    border-radius: 99px;
+  }
+
+  /* Sidebar scrollbar */
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 99px;
+  }
+
+  /* Status badge base */
+  .status-dot::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-right: 6px;
+    flex-shrink: 0;
+  }
+}

@@ -1,0 +1,335 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Company {
+  id          String       @id @default(cuid())
+  name        String
+  domain      String       @unique
+  logo        String?
+  address     String?
+  phone       String?
+  email       String?
+  website     String?
+  timezone    String       @default("Asia/Karachi")
+  currency    String       @default("PKR")
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  attendance  Attendance[]
+  departments Department[]
+  employees   Employee[]
+  leaveTypes  LeaveType[]
+  offices     Office[]
+  payrollRuns PayrollRun[]
+  shifts      Shift[]
+  users       User[]
+
+  @@map("companies")
+}
+
+model User {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  password    String
+  role        Role      @default(EMPLOYEE)
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  companyId   String
+  employee    Employee?
+  company     Company   @relation(fields: [companyId], references: [id])
+
+  @@map("users")
+}
+
+model Department {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  managerId   String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  companyId   String
+  company     Company    @relation(fields: [companyId], references: [id])
+  employees   Employee[]
+
+  @@map("departments")
+}
+
+model Office {
+  id         String       @id @default(cuid())
+  name       String
+  address    String
+  city       String?
+  latitude   Float
+  longitude  Float
+  radius     Int          @default(100)
+  isActive   Boolean      @default(true)
+  workStart  String       @default("09:00")
+  workEnd    String       @default("18:00")
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  companyId  String
+  attendance Attendance[]
+  employees  Employee[]
+  company    Company      @relation(fields: [companyId], references: [id])
+
+  @@map("offices")
+}
+
+model Employee {
+  id             String         @id @default(cuid())
+  employeeId     String
+  firstName      String
+  lastName       String
+  email          String
+  phone          String?
+  avatar         String?
+  dateOfBirth    DateTime?
+  gender         String?
+  address        String?
+  city           String?
+  cnic           String?
+  joiningDate    DateTime
+  leavingDate    DateTime?
+  designation    String
+  employmentType EmploymentType @default(FULL_TIME)
+  status         EmployeeStatus @default(ACTIVE)
+  basicSalary    Decimal        @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  userId         String         @unique
+  companyId      String
+  departmentId   String?
+  officeId       String?
+  shiftId        String?
+  managerId      String?
+  attendance     Attendance[]
+  company        Company        @relation(fields: [companyId], references: [id])
+  department     Department?    @relation(fields: [departmentId], references: [id])
+  office         Office?        @relation(fields: [officeId], references: [id])
+  shift          Shift?         @relation(fields: [shiftId], references: [id])
+  user           User           @relation(fields: [userId], references: [id])
+  leaveBalances  LeaveBalance[]
+  leaveRequests  LeaveRequest[]
+  salarySlips    SalarySlip[]
+  timesheets     Timesheet[]
+
+  @@map("employees")
+}
+
+model Shift {
+  id           String     @id @default(cuid())
+  name         String
+  startTime    String
+  endTime      String
+  breakMinutes Int        @default(60)
+  gracePeriod  Int        @default(15)
+  workingDays  String[]
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  companyId    String
+  employees    Employee[]
+  company      Company    @relation(fields: [companyId], references: [id])
+
+  @@map("shifts")
+}
+
+model Attendance {
+  id              String           @id @default(cuid())
+  date            DateTime         @db.Date
+  checkIn         DateTime?
+  checkOut        DateTime?
+  checkInLat      Float?
+  checkInLng      Float?
+  checkOutLat     Float?
+  checkOutLng     Float?
+  workingMinutes  Int?
+  overtimeMinutes Int?
+  lateMinutes     Int?
+  status          AttendanceStatus @default(ABSENT)
+  notes           String?
+  isManualEntry   Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  employeeId      String
+  companyId       String
+  officeId        String?
+  company         Company          @relation(fields: [companyId], references: [id])
+  employee        Employee         @relation(fields: [employeeId], references: [id])
+  office          Office?          @relation(fields: [officeId], references: [id])
+
+  @@unique([employeeId, date])
+  @@map("attendance")
+}
+
+model Timesheet {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  hoursWorked Decimal
+  description String?
+  isApproved  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+
+  @@map("timesheets")
+}
+
+model LeaveType {
+  id              String         @id @default(cuid())
+  name            String
+  daysAllowed     Int
+  isCarryForward  Boolean        @default(false)
+  maxCarryForward Int            @default(0)
+  requiresDoc     Boolean        @default(false)
+  color           String         @default("#16A34A")
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  companyId       String
+  leaveBalances   LeaveBalance[]
+  leaveRequests   LeaveRequest[]
+  company         Company        @relation(fields: [companyId], references: [id])
+
+  @@map("leave_types")
+}
+
+model LeaveBalance {
+  id          String    @id @default(cuid())
+  year        Int
+  allocated   Int
+  used        Int       @default(0)
+  remaining   Int
+  updatedAt   DateTime  @updatedAt
+  employeeId  String
+  leaveTypeId String
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@unique([employeeId, leaveTypeId, year])
+  @@map("leave_balances")
+}
+
+model LeaveRequest {
+  id          String      @id @default(cuid())
+  startDate   DateTime    @db.Date
+  endDate     DateTime    @db.Date
+  days        Int
+  reason      String
+  status      LeaveStatus @default(PENDING)
+  reviewedBy  String?
+  reviewNote  String?
+  reviewedAt  DateTime?
+  attachment  String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  employeeId  String
+  leaveTypeId String
+  employee    Employee    @relation(fields: [employeeId], references: [id])
+  leaveType   LeaveType   @relation(fields: [leaveTypeId], references: [id])
+
+  @@map("leave_requests")
+}
+
+model PayrollRun {
+  id            String        @id @default(cuid())
+  month         Int
+  year          Int
+  totalAmount   Decimal
+  employeeCount Int
+  status        PayrollStatus @default(DRAFT)
+  processedAt   DateTime?
+  processedBy   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  companyId     String
+  company       Company       @relation(fields: [companyId], references: [id])
+  salarySlips   SalarySlip[]
+
+  @@unique([companyId, month, year])
+  @@map("payroll_runs")
+}
+
+model SalarySlip {
+  id              String     @id @default(cuid())
+  month           Int
+  year            Int
+  basicSalary     Decimal
+  allowances      Decimal    @default(0)
+  overtime        Decimal    @default(0)
+  bonus           Decimal    @default(0)
+  grossSalary     Decimal
+  taxDeduction    Decimal    @default(0)
+  otherDeductions Decimal    @default(0)
+  netSalary       Decimal
+  workingDays     Int
+  presentDays     Int
+  leaveDays       Int
+  overtimeHours   Decimal    @default(0)
+  isPaid          Boolean    @default(false)
+  paidAt          DateTime?
+  createdAt       DateTime   @default(now())
+  employeeId      String
+  payrollRunId    String
+  employee        Employee   @relation(fields: [employeeId], references: [id])
+  payrollRun      PayrollRun @relation(fields: [payrollRunId], references: [id])
+
+  @@unique([employeeId, month, year])
+  @@map("salary_slips")
+}
+
+enum Role {
+  SUPER_ADMIN
+  COMPANY_OWNER
+  HR_ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+  TERMINATED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  WORK_FROM_HOME
+  ON_LEAVE
+  HOLIDAY
+  WEEKEND
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum PayrollStatus {
+  DRAFT
+  PROCESSING
+  PROCESSED
+  PAID
+}
