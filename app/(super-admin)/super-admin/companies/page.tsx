@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   Building2, Users, Plus, Loader2, X, CheckCircle2, XCircle,
-  ToggleLeft, ToggleRight, Search, Eye, EyeOff, ArrowUpRight, Globe, Trash2, AlertTriangle
+  ToggleLeft, ToggleRight, Search, Eye, EyeOff, ArrowUpRight, Globe, Trash2, AlertTriangle, Pencil
 } from "lucide-react";
 
 type Company = {
@@ -58,6 +58,11 @@ export default function SuperAdminCompaniesPage() {
   const [search, setSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<Company | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editTarget, setEditTarget] = useState<Company | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", domain: "", newAdminPassword: "" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [showEditPass, setShowEditPass] = useState(false);
   const [form, setForm] = useState({
     name: "", domain: "", adminEmail: "", adminPassword: "", adminName: "",
   });
@@ -105,6 +110,33 @@ export default function SuperAdminCompaniesPage() {
     await fetch(`/api/super-admin/companies/${deleteConfirm.id}`, { method: "DELETE" });
     setDeleting(false);
     setDeleteConfirm(null);
+    load();
+  };
+
+  const startEdit = (c: Company) => {
+    setEditTarget(c);
+    setEditForm({ name: c.name, domain: c.domain, newAdminPassword: "" });
+    setEditError(""); setShowEditPass(false);
+  };
+
+  const handleEdit = async () => {
+    if (!editTarget || !editForm.name || !editForm.domain) {
+      setEditError("Name and domain are required."); return;
+    }
+    setEditSaving(true); setEditError("");
+    const res = await fetch(`/api/super-admin/companies/${editTarget.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editForm.name,
+        domain: editForm.domain.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+        newAdminPassword: editForm.newAdminPassword || undefined,
+      }),
+    });
+    const data = await res.json();
+    setEditSaving(false);
+    if (!res.ok) { setEditError(data.error ?? "Failed to save."); return; }
+    setEditTarget(null);
     load();
   };
 
@@ -225,13 +257,20 @@ export default function SuperAdminCompaniesPage() {
                       )}
                     </td>
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Link
                           href={`/super-admin/companies/${c.id}`}
                           className="flex items-center gap-1 text-[11px] text-[#16A34A] hover:text-[#15803D] font-semibold transition-colors"
                         >
                           <ArrowUpRight size={12} /> View
                         </Link>
+                        <button
+                          onClick={() => startEdit(c)}
+                          className="p-1.5 rounded-lg text-[#6B8C7A] hover:text-[#16A34A] hover:bg-[#F0F9F3] transition-colors"
+                          title="Edit company"
+                        >
+                          <Pencil size={14} />
+                        </button>
                         <button
                           onClick={() => toggleActive(c.id, c.isActive)}
                           className="text-[#6B8C7A] hover:text-[#0D1F15] transition-colors"
@@ -243,10 +282,10 @@ export default function SuperAdminCompaniesPage() {
                         </button>
                         <button
                           onClick={() => setDeleteConfirm(c)}
-                          className="text-[#9BB8A8] hover:text-red-500 transition-colors"
+                          className="p-1.5 rounded-lg text-[#9BB8A8] hover:text-red-500 hover:bg-red-50 transition-colors"
                           title="Delete company"
                         >
-                          <Trash2 size={15} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
@@ -254,6 +293,70 @@ export default function SuperAdminCompaniesPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Company Panel */}
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="flex-1 bg-black/30 backdrop-blur-[2px]" onClick={() => !editSaving && setEditTarget(null)} />
+          <div className="w-full max-w-md bg-white border-l border-[#E5EDE9] h-full overflow-y-auto flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[#EEF5F1]">
+              <div>
+                <h2 className="text-base font-bold text-[#0D1F15]">Edit Company</h2>
+                <p className="text-xs text-[#6B8C7A] mt-0.5">{editTarget.name}</p>
+              </div>
+              <button onClick={() => !editSaving && setEditTarget(null)}
+                className="w-8 h-8 rounded-xl bg-[#F4F8F6] border border-[#E5EDE9] flex items-center justify-center text-[#6B8C7A] hover:text-[#0D1F15]">
+                <X size={15} />
+              </button>
+            </div>
+            <div className="flex-1 px-6 py-6 space-y-4">
+              {editError && (
+                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-600">{editError}</div>
+              )}
+              <div>
+                <label className="block text-xs font-semibold text-[#3D5A47] mb-1.5">Company Name <span className="text-red-500">*</span></label>
+                <input type="text" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 text-sm bg-white border border-[#D4E6DC] rounded-xl focus:outline-none focus:border-[#16A34A] focus:ring-2 focus:ring-[#16A34A]/10" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#3D5A47] mb-1.5">Domain <span className="text-red-500">*</span></label>
+                <div className="relative flex items-center border border-[#D4E6DC] rounded-xl overflow-hidden focus-within:border-[#16A34A]">
+                  <input type="text" value={editForm.domain}
+                    onChange={e => setEditForm(f => ({ ...f, domain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
+                    className="flex-1 px-3.5 py-2.5 text-sm bg-white focus:outline-none" />
+                  <span className="px-3 py-2.5 text-xs text-[#6B8C7A] bg-[#F4F8F6] border-l border-[#D4E6DC]">.nexhr.app</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#3D5A47] mb-1.5">Reset Admin Password <span className="text-[#9BB8A8] font-normal">(leave blank to keep current)</span></label>
+                <div className="relative">
+                  <input type={showEditPass ? "text" : "password"} value={editForm.newAdminPassword}
+                    onChange={e => setEditForm(f => ({ ...f, newAdminPassword: e.target.value }))}
+                    placeholder="New password…"
+                    className="w-full px-3.5 py-2.5 pr-10 text-sm bg-white border border-[#D4E6DC] rounded-xl focus:outline-none focus:border-[#16A34A] focus:ring-2 focus:ring-[#16A34A]/10" />
+                  <button type="button" onClick={() => setShowEditPass(!showEditPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B8C7A]">
+                    {showEditPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+              <div className="bg-[#F4F8F6] border border-[#E5EDE9] rounded-xl p-3">
+                <p className="text-xs text-[#6B8C7A]">Admin email: <span className="font-semibold text-[#0D1F15]">{editTarget.users[0]?.email ?? "—"}</span></p>
+              </div>
+            </div>
+            <div className="px-6 py-5 border-t border-[#EEF5F1] flex gap-3 bg-[#F8FAF9]">
+              <button onClick={handleEdit} disabled={editSaving}
+                className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#16A34A] text-white text-sm font-bold rounded-xl hover:bg-[#15803D] disabled:opacity-50">
+                {editSaving ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : <><CheckCircle2 size={14} /> Save Changes</>}
+              </button>
+              <button onClick={() => setEditTarget(null)} disabled={editSaving}
+                className="px-5 py-3 text-sm text-[#6B8C7A] bg-white border border-[#E5EDE9] rounded-xl hover:bg-[#F4F8F6] disabled:opacity-50">
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
