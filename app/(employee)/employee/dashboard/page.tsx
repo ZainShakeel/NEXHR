@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   Loader2, Clock, LogIn, LogOut, CalendarCheck, CalendarX,
   TrendingUp, Wallet, FileText, ClipboardList, ArrowRight,
-  CheckCircle2, AlertCircle, Timer,
+  CheckCircle2, AlertCircle, Timer, Calendar,
 } from "lucide-react";
 import Link from "next/link";
 import { useCompany } from "@/hooks/useCompany";
