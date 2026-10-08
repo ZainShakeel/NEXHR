@@ -91,7 +91,7 @@ export default function SuperAdminCompaniesPage() {
     setSaving(false);
     if (!res.ok) { setError(data.error ?? "Failed to create company."); return; }
     setSuccess(`${form.name} onboarded successfully. Welcome email sent to ${form.adminEmail}.`);
-    setForm({ name: "", domain: "", adminEmail: "", adminPassword: "", adminName: "" });
+    setForm({ name: "", domain: "", adminEmail: "", adminPassword: "", adminName: "", plan: "FREE" });
     load();
   };
 
