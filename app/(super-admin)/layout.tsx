@@ -5,15 +5,18 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Building2, BarChart3, CreditCard, Settings,
-  LogOut, ChevronRight, Menu, X, Shield
+  LogOut, ChevronRight, Menu, Shield, Globe, Receipt, Package
 } from "lucide-react";
 
 const NAV = [
-  { label: "Dashboard", href: "/super-admin/dashboard", icon: LayoutDashboard },
-  { label: "Companies", href: "/super-admin/companies", icon: Building2 },
-  { label: "Analytics", href: "/super-admin/analytics", icon: BarChart3 },
-  { label: "Plans", href: "/super-admin/plans", icon: CreditCard },
-  { label: "Settings", href: "/super-admin/settings", icon: Settings },
+  { label: "Dashboard",             href: "/super-admin/dashboard",     icon: LayoutDashboard },
+  { label: "Companies",             href: "/super-admin/companies",      icon: Building2 },
+  { label: "Subscriptions",         href: "/super-admin/subscriptions",  icon: Receipt },
+  { label: "Packages",              href: "/super-admin/packages",       icon: Package },
+  { label: "Domain",                href: "/super-admin/domain",         icon: Globe },
+  { label: "Purchase Transactions", href: "/super-admin/transactions",   icon: CreditCard },
+  { label: "Analytics",             href: "/super-admin/analytics",      icon: BarChart3 },
+  { label: "Settings",              href: "/super-admin/settings",       icon: Settings },
 ];
 
 function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {

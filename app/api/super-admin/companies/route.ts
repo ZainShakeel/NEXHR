@@ -24,7 +24,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { name, domain, adminEmail, adminPassword, adminName } = await req.json();
+    const { name, domain, adminEmail, adminPassword, adminName, plan } = await req.json();
     if (!name || !domain || !adminEmail || !adminPassword) {
       return NextResponse.json({ error: "name, domain, adminEmail, adminPassword required" }, { status: 400 });
     }
@@ -33,9 +33,11 @@ export async function POST(req: Request) {
     if (existing) return NextResponse.json({ error: "Domain already taken" }, { status: 409 });
 
     const hashed = await bcrypt.hash(adminPassword, 10);
+    const PLAN_LIMITS: Record<string, number> = { FREE: 5, STARTER: 25, BUSINESS: 100, ENTERPRISE: 99999 };
+    const selectedPlan = plan ?? "FREE";
 
     const company = await prisma.$transaction(async (tx) => {
-      const c = await tx.company.create({ data: { name, domain } });
+      const c = await tx.company.create({ data: { name, domain, plan: selectedPlan, maxEmployees: PLAN_LIMITS[selectedPlan] ?? 5 } });
 
       const user = await tx.user.create({
         data: {

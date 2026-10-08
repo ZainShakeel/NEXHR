@@ -9,29 +9,49 @@ datasource db {
 }
 
 model Company {
-  id          String       @id @default(cuid())
-  name        String
-  domain      String       @unique
-  logo        String?
-  address     String?
-  phone       String?
-  email       String?
-  website     String?
-  timezone    String       @default("Asia/Karachi")
-  currency    String       @default("PKR")
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  attendance  Attendance[]
-  departments Department[]
-  employees   Employee[]
-  leaveTypes  LeaveType[]
-  offices     Office[]
-  payrollRuns PayrollRun[]
-  shifts      Shift[]
-  users       User[]
+  id             String         @id @default(cuid())
+  name           String
+  domain         String         @unique
+  logo           String?
+  address        String?
+  phone          String?
+  email          String?
+  website        String?
+  timezone       String         @default("Asia/Karachi")
+  currency       String         @default("PKR")
+  isActive       Boolean        @default(true)
+  plan           PlanType       @default(FREE)
+  planExpiresAt  DateTime?
+  maxEmployees   Int            @default(5)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  attendance     Attendance[]
+  departments    Department[]
+  employees      Employee[]
+  leaveTypes     LeaveType[]
+  offices        Office[]
+  payrollRuns    PayrollRun[]
+  shifts         Shift[]
+  users          User[]
+  subscriptions  Subscription[]
 
   @@map("companies")
+}
+
+model Subscription {
+  id          String       @id @default(cuid())
+  companyId   String
+  plan        PlanType
+  amount      Float
+  currency    String       @default("PKR")
+  startDate   DateTime
+  endDate     DateTime
+  status      SubStatus    @default(ACTIVE)
+  notes       String?
+  createdAt   DateTime     @default(now())
+  company     Company      @relation(fields: [companyId], references: [id])
+
+  @@map("subscriptions")
 }
 
 model User {
@@ -293,6 +313,20 @@ enum Role {
   HR_ADMIN
   MANAGER
   EMPLOYEE
+}
+
+enum PlanType {
+  FREE
+  STARTER
+  BUSINESS
+  ENTERPRISE
+}
+
+enum SubStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PAUSED
 }
 
 enum EmploymentType {

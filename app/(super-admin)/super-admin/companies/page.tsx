@@ -64,7 +64,7 @@ export default function SuperAdminCompaniesPage() {
   const [editError, setEditError] = useState("");
   const [showEditPass, setShowEditPass] = useState(false);
   const [form, setForm] = useState({
-    name: "", domain: "", adminEmail: "", adminPassword: "", adminName: "",
+    name: "", domain: "", adminEmail: "", adminPassword: "", adminName: "", plan: "FREE",
   });
 
   const load = useCallback(() => {
@@ -471,6 +471,16 @@ export default function SuperAdminCompaniesPage() {
                     <Field label="Admin Full Name" name="adminName" placeholder="e.g. Ahmed Khan" value={form.adminName} onChange={(v) => setForm((p) => ({ ...p, adminName: v }))} />
                     <Field label="Admin Email" name="adminEmail" type="email" placeholder="admin@company.com" value={form.adminEmail} onChange={(v) => setForm((p) => ({ ...p, adminEmail: v }))} required />
                     <Field label="Admin Password" name="adminPassword" type="password" placeholder="Min. 8 characters" value={form.adminPassword} onChange={(v) => setForm((p) => ({ ...p, adminPassword: v }))} required />
+                    <div>
+                      <label className="block text-xs font-semibold text-[#3D5A47] mb-1.5">Plan</label>
+                      <select value={form.plan} onChange={e => setForm(p => ({ ...p, plan: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 text-sm bg-white border border-[#D4E6DC] rounded-xl focus:outline-none focus:border-[#16A34A] focus:ring-2 focus:ring-[#16A34A]/10">
+                        <option value="FREE">Free — PKR 0 (up to 5 employees)</option>
+                        <option value="STARTER">Starter — PKR 4,999/mo (up to 25)</option>
+                        <option value="BUSINESS">Business — PKR 9,999/mo (up to 100)</option>
+                        <option value="ENTERPRISE">Enterprise — Custom (unlimited)</option>
+                      </select>
+                    </div>
                   </div>
                 </>
               )}
