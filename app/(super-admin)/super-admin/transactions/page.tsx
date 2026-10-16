@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { Loader2, TrendingUp, DollarSign, Calendar, Search, Download } from "lucide-react";
@@ -131,7 +131,7 @@ export default function TransactionsPage() {
       <div className="flex gap-3 mb-4">
         <div className="relative flex-1 max-w-sm">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B]" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by company…"
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by company..."
             className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-[#E2E8F0] rounded-xl focus:outline-none focus:border-[#07845A] shadow-sm" />
         </div>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
@@ -165,7 +165,7 @@ export default function TransactionsPage() {
                   </td>
                   <td className="px-5 py-4 text-sm font-bold text-[#172B24]">PKR {s.amount.toLocaleString()}</td>
                   <td className="px-5 py-4 text-xs text-[#64748B]">
-                    {new Date(s.startDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })} –{" "}
+                    {new Date(s.startDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })} -{" "}
                     {new Date(s.endDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" })}
                   </td>
                   <td className="px-5 py-4">

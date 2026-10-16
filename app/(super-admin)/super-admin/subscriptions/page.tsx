@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { Loader2, Plus, X, CheckCircle2, AlertTriangle, Clock, TrendingUp, DollarSign } from "lucide-react";
@@ -120,7 +120,7 @@ export default function SubscriptionsPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle size={15} className="text-amber-500" />
-            <span className="text-sm font-bold text-amber-800">Renewal Alerts — expiring within 7 days</span>
+            <span className="text-sm font-bold text-amber-800">Renewal Alerts - expiring within 7 days</span>
           </div>
           <div className="space-y-2">
             {expiringSoon.map(s => {
@@ -181,7 +181,7 @@ export default function SubscriptionsPage() {
                           {dl < 0 ? "Overdue" : dl === 0 ? "Today" : `${dl}d`}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-[#94A3B8]">—</span>
+                        <span className="text-[10px] text-[#94A3B8]">-</span>
                       )}
                     </td>
                     <td className="px-5 py-4">
@@ -224,7 +224,7 @@ export default function SubscriptionsPage() {
                 <label className="block text-xs font-semibold text-[#475569] mb-1.5">Company *</label>
                 <select value={form.companyId} onChange={e => setForm(f => ({ ...f, companyId: e.target.value }))}
                   className="w-full px-3.5 py-2.5 text-sm bg-white border border-[#E2E8F0] rounded-xl focus:outline-none focus:border-[#07845A]">
-                  <option value="">— Select company —</option>
+                  <option value="">- Select company -</option>
                   {companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.domain})</option>)}
                 </select>
               </div>
@@ -255,14 +255,14 @@ export default function SubscriptionsPage() {
               <div>
                 <label className="block text-xs font-semibold text-[#475569] mb-1.5">Notes</label>
                 <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3}
-                  placeholder="Optional notes…"
+                  placeholder="Optional notes..."
                   className="w-full px-3.5 py-2.5 text-sm bg-white border border-[#E2E8F0] rounded-xl focus:outline-none focus:border-[#07845A] resize-none" />
               </div>
             </div>
             <div className="px-6 py-5 border-t border-[#F1F5F9] flex gap-3 bg-[#F8FAFC]">
               <button onClick={handleCreate} disabled={saving}
                 className="flex-1 py-3 bg-[#07845A] text-white text-sm font-bold rounded-xl hover:bg-[#05603F] disabled:opacity-50 flex items-center justify-center gap-2">
-                {saving ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : "Assign Plan"}
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : "Assign Plan"}
               </button>
               <button onClick={() => setShowPanel(false)} className="px-5 py-3 text-sm text-[#64748B] bg-white border border-[#E2E8F0] rounded-xl hover:bg-[#F5F8F6]">Cancel</button>
             </div>

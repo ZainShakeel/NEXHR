@@ -192,7 +192,7 @@ export default function SuperAdminCompaniesPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or domain…"
+            placeholder="Search by name or domain..."
             className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-[#E2E8F0] rounded-xl text-[#172B24] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#07845A] focus:ring-2 focus:ring-[#07845A]/10 transition-all shadow-sm"
           />
         </div>
@@ -263,32 +263,32 @@ export default function SuperAdminCompaniesPage() {
                         {c.domain}
                       </span>
                     </td>
-                    <td className=”px-5 py-4 text-xs text-[#64748B] max-w-[180px] truncate”>
-                      {c.users[0]?.email ?? “—“}
+                    <td className="px-5 py-4 text-xs text-[#64748B] max-w-[180px] truncate">
+                      {c.users[0]?.email ?? "-"}
                     </td>
-                    <td className=”px-5 py-4”>
-                      <div className=”flex items-center gap-1.5”>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${PLAN_BADGE[c.plan] ?? “bg-gray-100 text-gray-500”}`}>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${PLAN_BADGE[c.plan] ?? "bg-gray-100 text-gray-500"}`}>
                           {c.plan}
                         </span>
                         {upgradingId === c.id ? (
-                          <Loader2 size={12} className=”animate-spin text-[#64748B]” />
+                          <Loader2 size={12} className="animate-spin text-[#64748B]" />
                         ) : (
                           <select
                             value={c.plan}
                             onChange={(e) => handleUpgradePlan(c.id, e.target.value)}
-                            className=”text-[10px] text-[#64748B] bg-transparent border-0 outline-none cursor-pointer hover:text-[#07845A]”
-                            title=”Change plan”
+                            className="text-[10px] text-[#64748B] bg-transparent border-0 outline-none cursor-pointer hover:text-[#07845A]"
+                            title="Change plan"
                           >
-                            <option value=”FREE”>Free</option>
-                            <option value=”STARTER”>Starter</option>
-                            <option value=”BUSINESS”>Business</option>
-                            <option value=”ENTERPRISE”>Enterprise</option>
+                            <option value="FREE">Free</option>
+                            <option value="STARTER">Starter</option>
+                            <option value="BUSINESS">Business</option>
+                            <option value="ENTERPRISE">Enterprise</option>
                           </select>
                         )}
                       </div>
                     </td>
-                    <td className=”px-5 py-4”>
+                    <td className="px-5 py-4">
                       <div className="flex items-center gap-1.5 text-sm text-[#172B24] font-medium">
                         <Users size={12} className="text-[#64748B]" />
                         {c._count.employees}
@@ -396,7 +396,7 @@ export default function SuperAdminCompaniesPage() {
                 </div>
               </div>
               <div className="bg-[#F5F8F6] border border-[#E2E8F0] rounded-xl p-3">
-                <p className="text-xs text-[#64748B]">Admin email: <span className="font-semibold text-[#172B24]">{editTarget.users[0]?.email ?? ""”"}</span></p>
+                <p className="text-xs text-[#64748B]">Admin email: <span className="font-semibold text-[#172B24]">{editTarget.users[0]?.email ?? """"}</span></p>
               </div>
             </div>
             <div className="px-6 py-5 border-t border-[#F1F5F9] flex gap-3 bg-[#F8FAFC]">
@@ -527,10 +527,10 @@ export default function SuperAdminCompaniesPage() {
                       <label className="block text-xs font-semibold text-[#475569] mb-1.5">Plan</label>
                       <select value={form.plan} onChange={e => setForm(p => ({ ...p, plan: e.target.value }))}
                         className="w-full px-3.5 py-2.5 text-sm bg-white border border-[#E2E8F0] rounded-xl focus:outline-none focus:border-[#07845A] focus:ring-2 focus:ring-[#07845A]/10">
-                        <option value="FREE">Free "” PKR 0 (up to 5 employees)</option>
-                        <option value="STARTER">Starter "” PKR 4,999/mo (up to 25)</option>
-                        <option value="BUSINESS">Business "” PKR 9,999/mo (up to 100)</option>
-                        <option value="ENTERPRISE">Enterprise "” Custom (unlimited)</option>
+                        <option value="FREE">Free "" PKR 0 (up to 5 employees)</option>
+                        <option value="STARTER">Starter "" PKR 4,999/mo (up to 25)</option>
+                        <option value="BUSINESS">Business "" PKR 9,999/mo (up to 100)</option>
+                        <option value="ENTERPRISE">Enterprise "" Custom (unlimited)</option>
                       </select>
                     </div>
                   </div>

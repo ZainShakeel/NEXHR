@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Save, Shield, Bell, Globe, CreditCard, Check, KeyRound, Eye, EyeOff, Loader2, LogOut, User } from "lucide-react";
@@ -220,7 +220,7 @@ export default function SuperAdminSettings() {
             </div>
             <button onClick={handlePasswordChange} disabled={pwSaving}
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#07845A] text-white text-sm font-semibold rounded-xl hover:bg-[#05603F] disabled:opacity-50 transition-colors">
-              {pwSaving ? <><Loader2 size={14} className="animate-spin" /> Verifying…</> : <><KeyRound size={14} /> Change Password</>}
+              {pwSaving ? <><Loader2 size={14} className="animate-spin" /> Verifying...</> : <><KeyRound size={14} /> Change Password</>}
             </button>
           </div>
         </div>
@@ -235,7 +235,7 @@ export default function SuperAdminSettings() {
             <button onClick={handleLogout} disabled={loggingOut}
               className="flex items-center gap-2 px-4 py-2.5 bg-red-50 border border-red-200 text-red-600 text-sm font-semibold rounded-xl hover:bg-red-100 disabled:opacity-50 transition-colors">
               {loggingOut ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}
-              {loggingOut ? "Signing out…" : "Sign Out"}
+              {loggingOut ? "Signing out..." : "Sign Out"}
             </button>
           </div>
         </div>

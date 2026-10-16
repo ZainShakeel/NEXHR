@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { Loader2, TrendingUp, Building2, Users, Activity, AlertTriangle, DollarSign } from "lucide-react";
@@ -201,7 +201,7 @@ export default function SuperAdminAnalyticsPage() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart
                 data={topCompanies.map((c) => ({
-                  name: c.name.length > 14 ? c.name.slice(0, 14) + "…" : c.name,
+                  name: c.name.length > 14 ? c.name.slice(0, 14) + "..." : c.name,
                   employees: c._count.employees,
                 }))}
                 margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
