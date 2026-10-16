@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -93,21 +93,24 @@ export default function SuperAdminDashboard() {
     );
   }
 
+  // stats is guaranteed non-null here â€” both early-returns above handle null
+  const s = stats as Stats;
+
   const kpis = [
-    { label: "Total Companies", value: stats.totalCompanies, sub: `${stats.activeCompanies} active`, icon: Building2, color: "#07845A", bg: "#E3F6EB" },
-    { label: "Total Employees", value: stats.totalEmployees, sub: "across all companies", icon: Users, color: "#3B82F6", bg: "#DBEAFE" },
-    { label: "Monthly Revenue", value: `PKR ${stats.mrr.toLocaleString()}`, sub: "this month", icon: DollarSign, color: "#7C3AED", bg: "#EDE9FE" },
-    { label: "Total Revenue", value: `PKR ${stats.totalRevenue.toLocaleString()}`, sub: "all time", icon: TrendingUp, color: "#F59E0B", bg: "#FEF3C7" },
+    { label: "Total Companies", value: s.totalCompanies, sub: `${s.activeCompanies} active`, icon: Building2, color: "#07845A", bg: "#E3F6EB" },
+    { label: "Total Employees", value: s.totalEmployees, sub: "across all companies", icon: Users, color: "#3B82F6", bg: "#DBEAFE" },
+    { label: "Monthly Revenue", value: `PKR ${s.mrr.toLocaleString()}`, sub: "this month", icon: DollarSign, color: "#7C3AED", bg: "#EDE9FE" },
+    { label: "Total Revenue", value: `PKR ${s.totalRevenue.toLocaleString()}`, sub: "all time", icon: TrendingUp, color: "#F59E0B", bg: "#FEF3C7" },
   ];
 
   const statusCards = [
-    { label: "Active",   value: stats.activeCompanies,  color: "#07845A", bg: "#E3F6EB", icon: CheckCircle2 },
-    { label: "Paused",   value: stats.pausedCompanies,  color: "#EF4444", bg: "#FEE2E2", icon: XCircle },
-    { label: "Expired",  value: stats.expiredCompanies, color: "#F59E0B", bg: "#FEF3C7", icon: AlertTriangle },
-    { label: "Free Plan", value: stats.planDist.find(p => p.name === "FREE")?.value ?? 0, color: "#64748B", bg: "#F1F5F9", icon: Activity },
+    { label: "Active",   value: s.activeCompanies,  color: "#07845A", bg: "#E3F6EB", icon: CheckCircle2 },
+    { label: "Paused",   value: s.pausedCompanies,  color: "#EF4444", bg: "#FEE2E2", icon: XCircle },
+    { label: "Expired",  value: s.expiredCompanies, color: "#F59E0B", bg: "#FEF3C7", icon: AlertTriangle },
+    { label: "Free Plan", value: s.planDist.find(p => p.name === "FREE")?.value ?? 0, color: "#64748B", bg: "#F1F5F9", icon: Activity },
   ];
 
-  const expiringSoon = stats.recentCompanies.filter(c => {
+  const expiringSoon = s.recentCompanies.filter(c => {
     const d = daysLeft(c.planExpiresAt);
     return d !== null && d >= 0 && d <= 7;
   });
@@ -131,7 +134,7 @@ export default function SuperAdminDashboard() {
         <div className="relative z-10 hidden sm:flex items-center gap-3">
           <div className="px-4 py-2 rounded-lg text-xs font-bold text-white"
             style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
-            {stats.totalCompanies} companies onboarded
+            {s.totalCompanies} companies onboarded
           </div>
         </div>
       </div>
@@ -154,16 +157,16 @@ export default function SuperAdminDashboard() {
 
       {/* Status Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {statusCards.map((s) => (
-          <div key={s.label} className="bg-white rounded-xl p-4 flex items-center gap-3"
+        {statusCards.map((sc) => (
+          <div key={sc.label} className="bg-white rounded-xl p-4 flex items-center gap-3"
             style={{ border: "1px solid #E2E8F0" }}>
             <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: s.bg }}>
-              <s.icon size={16} style={{ color: s.color }} />
+              style={{ background: sc.bg }}>
+              <sc.icon size={16} style={{ color: sc.color }} />
             </div>
             <div>
-              <p className="text-xl font-black text-[#172B24]">{s.value}</p>
-              <p className="text-[11px] text-[#64748B] font-semibold">{s.label}</p>
+              <p className="text-xl font-black text-[#172B24]">{sc.value}</p>
+              <p className="text-[11px] text-[#64748B] font-semibold">{sc.label}</p>
             </div>
           </div>
         ))}
@@ -181,8 +184,8 @@ export default function SuperAdminDashboard() {
               <TrendingUp size={13} style={{ color: "#07845A" }} />
             </div>
           </div>
-          {stats.monthlyRevenue.length > 0
-            ? <MiniBar data={stats.monthlyRevenue.map(d => ({ month: d.month, value: d.amount }))} colorKey="#07845A" />
+          {s.monthlyRevenue.length > 0
+            ? <MiniBar data={s.monthlyRevenue.map(d => ({ month: d.month, value: d.amount }))} colorKey="#07845A" />
             : <div className="h-16 flex items-center justify-center text-xs text-[#94A3B8]">No revenue yet</div>}
         </div>
 
@@ -196,8 +199,8 @@ export default function SuperAdminDashboard() {
               <Building2 size={13} style={{ color: "#3B82F6" }} />
             </div>
           </div>
-          {stats.monthlyGrowth.length > 0
-            ? <MiniBar data={stats.monthlyGrowth.map(d => ({ month: d.month, value: d.companies }))} colorKey="#3B82F6" />
+          {s.monthlyGrowth.length > 0
+            ? <MiniBar data={s.monthlyGrowth.map(d => ({ month: d.month, value: d.companies }))} colorKey="#3B82F6" />
             : <div className="h-16 flex items-center justify-center text-xs text-[#94A3B8]">No data yet</div>}
         </div>
 
@@ -205,10 +208,10 @@ export default function SuperAdminDashboard() {
           <h3 className="text-sm font-bold text-[#172B24] mb-1">Plan Distribution</h3>
           <p className="text-xs text-[#94A3B8] mb-4">Companies by plan tier</p>
           <div className="space-y-3">
-            {stats.planDist.length === 0 ? (
+            {s.planDist.length === 0 ? (
               <p className="text-xs text-[#94A3B8] text-center py-4">No data</p>
-            ) : stats.planDist.map((p) => {
-              const total = Math.max(stats.totalCompanies, 1);
+            ) : s.planDist.map((p) => {
+              const total = Math.max(s.totalCompanies, 1);
               const pct = Math.round((p.value / total) * 100);
               const col = PLAN_COLORS[p.name] ?? "#94A3B8";
               return (
@@ -264,7 +267,7 @@ export default function SuperAdminDashboard() {
             <h3 className="text-sm font-bold text-[#172B24]">All Companies</h3>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
               style={{ background: "#E3F6EB", color: "#07845A" }}>
-              {stats.totalCompanies}
+              {s.totalCompanies}
             </span>
           </div>
           <Link href="/super-admin/companies"
@@ -284,13 +287,13 @@ export default function SuperAdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {stats.recentCompanies.length === 0 ? (
+              {s.recentCompanies.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-12 text-center text-sm text-[#94A3B8]">
                     No companies onboarded yet
                   </td>
                 </tr>
-              ) : stats.recentCompanies.map((c) => {
+              ) : s.recentCompanies.map((c) => {
                 const st = statusInfo(c);
                 const StatusIcon = st.icon;
                 const days = daysLeft(c.planExpiresAt);
@@ -349,3 +352,4 @@ export default function SuperAdminDashboard() {
     </div>
   );
 }
+
