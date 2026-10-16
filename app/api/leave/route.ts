@@ -14,7 +14,12 @@ export async function GET(req: NextRequest) {
     const requests = await prisma.leaveRequest.findMany({
       where,
       include: {
-        employee:  { select: { firstName: true, lastName: true, employeeId: true } },
+        employee: {
+          select: {
+            firstName: true, lastName: true, employeeId: true,
+            designation: true, department: { select: { name: true } },
+          },
+        },
         leaveType: { select: { name: true, color: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -56,10 +61,49 @@ export async function PATCH(req: NextRequest) {
   try {
     const { id, status, reviewNote } = await req.json();
 
+    const leaveReq = await prisma.leaveRequest.findUnique({
+      where: { id },
+      select: { employeeId: true, leaveTypeId: true, days: true, status: true },
+    });
+
+    if (!leaveReq) return NextResponse.json({ error: "Leave request not found" }, { status: 404 });
+
     const updated = await prisma.leaveRequest.update({
       where: { id },
-      data:  { status, reviewNote, reviewedAt: new Date() },
+      data: { status, reviewNote, reviewedAt: new Date() },
     });
+
+    // Update LeaveBalance when approving a previously PENDING request
+    if (status === "APPROVED" && leaveReq.status === "PENDING") {
+      const currentYear = new Date().getFullYear();
+      await prisma.leaveBalance.updateMany({
+        where: {
+          employeeId: leaveReq.employeeId,
+          leaveTypeId: leaveReq.leaveTypeId,
+          year: currentYear,
+        },
+        data: {
+          used: { increment: leaveReq.days },
+          remaining: { decrement: leaveReq.days },
+        },
+      });
+    }
+
+    // Restore balance if previously APPROVED and now being REJECTED or CANCELLED
+    if ((status === "REJECTED" || status === "CANCELLED") && leaveReq.status === "APPROVED") {
+      const currentYear = new Date().getFullYear();
+      await prisma.leaveBalance.updateMany({
+        where: {
+          employeeId: leaveReq.employeeId,
+          leaveTypeId: leaveReq.leaveTypeId,
+          year: currentYear,
+        },
+        data: {
+          used: { decrement: leaveReq.days },
+          remaining: { increment: leaveReq.days },
+        },
+      });
+    }
 
     return NextResponse.json(updated);
   } catch (e) {

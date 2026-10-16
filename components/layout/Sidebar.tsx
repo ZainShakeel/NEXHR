@@ -6,12 +6,12 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard, Users, Building2, ClipboardList,
-  MapPin, Clock, Timer, Calendar, DollarSign,
-  FileText, BarChart3, Bell, Settings, ChevronLeft,
-  ChevronRight, LogOut,
+  LayoutDashboard, Users, Building2, ClipboardList, MapPin, Clock,
+  Calendar, DollarSign, FileText, BarChart3, Bell, Settings,
+  ChevronLeft, ChevronRight, LogOut, Briefcase, UserPlus,
+  FolderOpen, Target, GraduationCap, Megaphone, HelpCircle,
+  GitBranch, Timer, ChevronDown, ChevronUp,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const navGroups = [
   {
@@ -23,15 +23,16 @@ const navGroups = [
     items: [
       { href: "/employees", label: "Employees", icon: Users },
       { href: "/departments", label: "Departments", icon: Building2 },
+      { href: "/org-chart", label: "Org Chart", icon: GitBranch, soon: true },
     ],
   },
   {
     label: "Time & Attendance",
     items: [
       { href: "/attendance", label: "Attendance", icon: ClipboardList },
-      { href: "/geofencing", label: "Geofencing", icon: MapPin },
       { href: "/shifts", label: "Shifts", icon: Clock },
       { href: "/timesheets", label: "Timesheets", icon: Timer },
+      { href: "/geofencing", label: "Geofencing", icon: MapPin },
     ],
   },
   {
@@ -42,15 +43,31 @@ const navGroups = [
     ],
   },
   {
-    label: "Payroll",
+    label: "Payroll & Finance",
     items: [
       { href: "/payroll", label: "Payroll", icon: DollarSign },
       { href: "/salary-slips", label: "Salary Slips", icon: FileText },
     ],
   },
   {
-    label: "Insights",
+    label: "Recruitment",
     items: [
+      { href: "/recruitment", label: "Job Openings", icon: Briefcase, soon: true },
+    ],
+  },
+  {
+    label: "Development",
+    items: [
+      { href: "/performance", label: "Performance", icon: Target, soon: true },
+      { href: "/training", label: "Training", icon: GraduationCap, soon: true },
+    ],
+  },
+  {
+    label: "Company",
+    items: [
+      { href: "/documents", label: "Documents", icon: FolderOpen, soon: true },
+      { href: "/announcements", label: "Announcements", icon: Megaphone, soon: true },
+      { href: "/onboarding", label: "Onboarding", icon: UserPlus, soon: true },
       { href: "/reports", label: "Reports & Analytics", icon: BarChart3 },
     ],
   },
@@ -59,6 +76,7 @@ const navGroups = [
     items: [
       { href: "/notifications", label: "Notifications", icon: Bell },
       { href: "/settings", label: "Settings", icon: Settings },
+      { href: "/help", label: "Help & Support", icon: HelpCircle, soon: true },
     ],
   },
 ];
@@ -72,6 +90,7 @@ interface SidebarProps {
 export default function Sidebar({ companyName = "NexHR", userRole = "HR Admin", userName = "" }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   const handleLogout = () => signOut({ callbackUrl: "/login" });
 
@@ -79,112 +98,160 @@ export default function Sidebar({ companyName = "NexHR", userRole = "HR Admin", 
     ? userName.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
     : "HR";
 
+  const toggleGroup = (label: string) => {
+    setCollapsedGroups(prev => ({ ...prev, [label]: !prev[label] }));
+  };
+
   return (
     <aside
-      className={cn(
-        "flex flex-col h-screen transition-all duration-300 ease-in-out relative flex-shrink-0",
-        collapsed ? "w-[64px]" : "w-[230px]"
-      )}
-      style={{ background: "linear-gradient(180deg, #071A10 0%, #0A2A1A 40%, #071A10 100%)" }}
+      className="flex flex-col h-screen flex-shrink-0 transition-all duration-300 ease-in-out relative"
+      style={{
+        width: collapsed ? 64 : 240,
+        background: "#FFFFFF",
+        borderRight: "1px solid #E2E8F0",
+      }}
     >
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-[72px] z-20 w-6 h-6 rounded-full flex items-center justify-center text-white/60 hover:text-white transition-colors shadow-lg"
-        style={{ background: "#16A34A", border: "2px solid #071A10" }}
+        className="absolute -right-3 top-[68px] z-20 w-6 h-6 rounded-full flex items-center justify-center shadow-md transition-colors"
+        style={{ background: "#07845A", border: "2px solid #fff", color: "#fff" }}
+        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
-        {collapsed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
+        {collapsed ? <ChevronRight size={10} /> : <ChevronLeft size={10} />}
       </button>
 
-      {/* Logo */}
+      {/* Logo + Company */}
       <div
-        className={cn("flex-shrink-0 h-[64px] flex items-center", collapsed ? "justify-center px-0" : "px-4")}
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
+        className="flex-shrink-0 h-16 flex items-center px-4"
+        style={{ borderBottom: "1px solid #E2E8F0" }}
       >
         {collapsed ? (
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,#16A34A,#22c55e)" }}>
-            <span className="text-white font-black text-sm">N</span>
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-sm"
+            style={{ background: "linear-gradient(135deg,#07845A,#0fa870)" }}
+          >
+            N
           </div>
         ) : (
-          <div className="flex flex-col gap-1 w-full">
-            <div className="relative h-8 w-[110px]">
-              <Image src="/nexhr-logo.png" alt="NexHR" fill className="object-contain object-left" priority />
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="relative w-8 h-8 flex-shrink-0">
+              <Image src="/nexhr-logo.png" alt="NexHR" fill className="object-contain" priority />
             </div>
-            <p className="text-[10px] text-white/35 truncate pl-0.5">{companyName}</p>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-[#172B24] truncate">NexHR</p>
+              <p className="text-[10px] text-[#64748B] truncate">{companyName}</p>
+            </div>
           </div>
         )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2" style={{ scrollbarWidth: "none" }}>
-        {navGroups.map((group, gi) => (
-          <div key={gi} className="mb-0.5">
-            {group.label && !collapsed && (
-              <p className="text-[9px] font-bold uppercase tracking-[0.14em] px-2 pt-4 pb-1.5" style={{ color: "rgba(255,255,255,0.25)" }}>
-                {group.label}
-              </p>
-            )}
-            {group.label && collapsed && <div className="h-3" />}
-            {group.items.map((item) => {
-              const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  title={collapsed ? item.label : undefined}
-                  className={cn(
-                    "flex items-center gap-3 px-2.5 py-2 rounded-xl text-[13px] font-medium transition-all duration-150 group relative mb-0.5",
-                    active
-                      ? "text-white"
-                      : "text-white/45 hover:text-white/80"
-                  )}
-                  style={active ? {
-                    background: "linear-gradient(90deg, rgba(22,163,74,0.25) 0%, rgba(22,163,74,0.08) 100%)",
-                    borderLeft: "3px solid #22c55e",
-                    paddingLeft: "0.5rem",
-                  } : { borderLeft: "3px solid transparent" }}
+      <nav className="flex-1 overflow-y-auto py-2" style={{ scrollbarWidth: "none" }}>
+        {navGroups.map((group, gi) => {
+          const isGroupCollapsed = group.label ? collapsedGroups[group.label] : false;
+          return (
+            <div key={gi} className="mb-0.5">
+              {group.label && !collapsed && (
+                <button
+                  onClick={() => toggleGroup(group.label!)}
+                  className="w-full flex items-center justify-between px-4 pt-4 pb-1.5 group"
                 >
-                  <item.icon
-                    size={16}
-                    className={cn("flex-shrink-0", active ? "text-green-400" : "text-white/40 group-hover:text-white/70")}
-                  />
-                  {!collapsed && <span className="truncate">{item.label}</span>}
-                  {collapsed && (
-                    <div className="absolute left-full ml-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all z-50 shadow-xl"
-                      style={{ background: "#16A34A" }}>
-                      {item.label}
-                    </div>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        ))}
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+                    {group.label}
+                  </span>
+                  {isGroupCollapsed
+                    ? <ChevronDown size={10} className="text-[#94A3B8]" />
+                    : <ChevronUp size={10} className="text-[#94A3B8]" />
+                  }
+                </button>
+              )}
+              {group.label && collapsed && <div className="h-2" />}
+
+              {!isGroupCollapsed && group.items.map((item: any) => {
+                const active = pathname === item.href ||
+                  (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.soon ? "#" : item.href}
+                    title={collapsed ? item.label : undefined}
+                    className="flex items-center gap-3 mx-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-100 group relative mb-0.5"
+                    style={active
+                      ? { background: "#E3F6EB", color: "#07845A" }
+                      : { color: "#475569" }
+                    }
+                    onClick={item.soon ? (e) => e.preventDefault() : undefined}
+                  >
+                    <item.icon
+                      size={16}
+                      className="flex-shrink-0 transition-colors"
+                      style={{ color: active ? "#07845A" : "#94A3B8" }}
+                    />
+                    {!collapsed && (
+                      <span className="flex-1 truncate" style={{ color: active ? "#07845A" : "#475569" }}>
+                        {item.label}
+                      </span>
+                    )}
+                    {!collapsed && item.soon && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ background: "#F1F5F9", color: "#94A3B8" }}>
+                        Soon
+                      </span>
+                    )}
+                    {active && !collapsed && (
+                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#07845A" }} />
+                    )}
+                    {/* Tooltip for collapsed */}
+                    {collapsed && (
+                      <div className="absolute left-full ml-3 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-lg"
+                        style={{ background: "#1E293B", color: "#fff" }}>
+                        {item.label}
+                        {item.soon && <span className="ml-1.5 text-[9px] opacity-60">(soon)</span>}
+                      </div>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          );
+        })}
       </nav>
 
       {/* User footer */}
-      <div className="flex-shrink-0 p-2" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-        <button
-          onClick={handleLogout}
-          className={cn(
-            "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all hover:bg-red-500/12 group",
-            collapsed && "justify-center"
-          )}
-        >
+      <div className="flex-shrink-0 p-3" style={{ borderTop: "1px solid #E2E8F0" }}>
+        <div className={`flex items-center gap-2.5 ${collapsed ? "justify-center" : ""}`}>
           <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-black flex-shrink-0"
-            style={{ background: "linear-gradient(135deg,#16A34A,#22c55e)" }}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
+            style={{ background: "linear-gradient(135deg,#07845A,#0fa870)" }}
           >
             {initials}
           </div>
           {!collapsed && (
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-xs font-semibold text-white truncate">{userName || "HR Admin"}</p>
-              <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{userRole}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-[#172B24] truncate">{userName || "HR Admin"}</p>
+              <p className="text-[10px] text-[#64748B] truncate">{userRole}</p>
             </div>
           )}
-          {!collapsed && <LogOut size={13} className="text-white/25 group-hover:text-red-400 transition-colors flex-shrink-0" />}
-        </button>
+          {!collapsed && (
+            <button
+              onClick={handleLogout}
+              className="p-1.5 rounded-lg hover:bg-red-50 transition-colors group"
+              title="Logout"
+            >
+              <LogOut size={14} className="text-[#94A3B8] group-hover:text-red-500 transition-colors" />
+            </button>
+          )}
+        </div>
+        {collapsed && (
+          <button
+            onClick={handleLogout}
+            className="w-full flex justify-center mt-2 p-1.5 rounded-lg hover:bg-red-50 transition-colors group"
+            title="Logout"
+          >
+            <LogOut size={14} className="text-[#94A3B8] group-hover:text-red-500 transition-colors" />
+          </button>
+        )}
       </div>
     </aside>
   );

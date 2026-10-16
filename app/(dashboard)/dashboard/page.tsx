@@ -1,593 +1,543 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
-  Users, UserCheck, UserMinus, Clock, ArrowUpRight, CheckCircle2,
-  XCircle, AlertTriangle, TrendingUp, DollarSign, Plus, Search,
-  Bell, Calendar, Loader2, Activity, ChevronRight, Star,
+  Users, UserCheck, UserX, Clock, TrendingUp, DollarSign,
+  Calendar, CheckCircle2, XCircle, AlertTriangle, Plus,
+  ArrowUpRight, ChevronRight, Loader2, BarChart3, Activity,
+  UserPlus, Building2,
 } from "lucide-react";
 import { useCompany } from "@/hooks/useCompany";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, AreaChart, Area, CartesianGrid,
+} from "recharts";
 
-type AttendanceTrend = { day: string; present: number; late: number; absent: number };
-type LeaveDetail = {
-  id: string;
-  employee: { firstName: string; lastName: string; designation: string };
-  leaveType: { name: string; color: string };
-  startDate: string; endDate: string; reason: string;
-};
-type Joiner = { firstName: string; lastName: string; designation: string; joiningDate: string; department?: { name: string } };
 type Stats = {
-  totalEmployees: number; presentToday: number; onLeave: number; pendingRequests: number;
-  lateToday: number; absentToday: number; attendanceRate: number;
+  totalEmployees: number; presentToday: number; onLeave: number;
+  pendingRequests: number; lateToday: number; absentToday: number;
+  attendanceRate: number; totalPayroll: number;
   departments: { id: string; name: string; _count: { employees: number } }[];
-  recentAttendance: any[];
-  pendingLeaveDetails: LeaveDetail[];
-  totalPayroll: number;
-  recentJoiners: Joiner[];
-  attendanceTrend: AttendanceTrend[];
+  recentAttendance: { status: string; checkIn?: string; checkOut?: string; employee: { firstName: string; lastName: string; employeeId: string; designation: string; department?: { name: string } } }[];
+  pendingLeaveDetails: {
+    id: string;
+    employee: { firstName: string; lastName: string; designation: string };
+    leaveType: { name: string; color: string };
+    startDate: string; endDate: string; reason: string;
+  }[];
+  recentJoiners: { firstName: string; lastName: string; designation: string; joiningDate: string; department?: { name: string } }[];
+  attendanceTrend: { day: string; present: number; late: number; absent: number }[];
   leaveDistribution: { name: string; value: number; color: string }[];
 };
 
-function AttendanceBar({ data }: { data: AttendanceTrend[] }) {
-  const max = Math.max(...data.map(d => d.present + d.late + d.absent), 1);
+const STATUS_COLORS: Record<string, string> = {
+  PRESENT: "#07845A", LATE: "#F59E0B", ABSENT: "#EF4444", ON_LEAVE: "#3B82F6",
+  WORK_FROM_HOME: "#8B5CF6", HALF_DAY: "#F97316",
+};
+
+const STATUS_BG: Record<string, string> = {
+  PRESENT: "#E3F6EB", LATE: "#FEF3C7", ABSENT: "#FEE2E2", ON_LEAVE: "#DBEAFE",
+  WORK_FROM_HOME: "#EDE9FE", HALF_DAY: "#FFEDD5",
+};
+
+const AVATAR_COLORS = ["#07845A", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444", "#06B6D4"];
+
+function Avatar({ name, index, size = 32 }: { name: string; index: number; size?: number }) {
+  const initials = name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
   return (
-    <div className="flex items-end gap-2 h-28">
-      {data.map((d, i) => {
-        const total = d.present + d.late + d.absent;
-        const h = Math.max((total / max) * 96, 4);
-        const pPct = total > 0 ? (d.present / total) * 100 : 0;
-        const lPct = total > 0 ? (d.late / total) * 100 : 0;
-        const aPct = total > 0 ? (d.absent / total) * 100 : 0;
-        return (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
-            <div className="relative w-full flex flex-col-reverse rounded-t-md overflow-hidden" style={{ height: h }}>
-              {d.present > 0 && (
-                <div style={{ height: `${pPct}%`, background: "linear-gradient(180deg,#22c55e,#16A34A)" }} />
-              )}
-              {d.late > 0 && (
-                <div style={{ height: `${lPct}%`, background: "#F59E0B" }} />
-              )}
-              {d.absent > 0 && (
-                <div style={{ height: `${aPct}%`, background: "#EF4444", opacity: 0.7 }} />
-              )}
-              {total === 0 && <div className="h-full" style={{ background: "#E5EDE9" }} />}
-            </div>
-            <span className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.45)" }}>{d.day}</span>
-          </div>
-        );
-      })}
+    <div
+      className="flex-shrink-0 rounded-full flex items-center justify-center text-white font-semibold"
+      style={{ width: size, height: size, background: AVATAR_COLORS[index % AVATAR_COLORS.length], fontSize: size * 0.3 }}
+    >
+      {initials}
     </div>
   );
 }
 
-function MiniDonut({ pct, color }: { pct: number; color: string }) {
-  const r = 18; const circ = 2 * Math.PI * r;
-  const dash = (pct / 100) * circ;
+function StatCard({
+  label, value, icon: Icon, color, bg, sub, trend,
+}: {
+  label: string; value: string | number; icon: any; color: string; bg: string;
+  sub?: string; trend?: { value: number; label: string };
+}) {
   return (
-    <svg width={44} height={44} viewBox="0 0 44 44" className="flex-shrink-0">
-      <circle cx={22} cy={22} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={5} />
-      <circle cx={22} cy={22} r={r} fill="none" stroke={color} strokeWidth={5}
-        strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={circ / 4}
-        strokeLinecap="round" style={{ filter: `drop-shadow(0 0 4px ${color}80)` }} />
-      <text x={22} y={22} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize={9} fontWeight={700}>{pct}%</text>
-    </svg>
-  );
-}
-
-function DeptBar({ depts, total }: { depts: Stats["departments"]; total: number }) {
-  const colors = ["#22c55e", "#3B82F6", "#F59E0B", "#7C3AED", "#EF4444", "#06b6d4"];
-  return (
-    <div className="space-y-3">
-      {depts.slice(0, 6).map((d, i) => {
-        const pct = total > 0 ? Math.round((d._count.employees / total) * 100) : 0;
-        return (
-          <div key={d.id}>
-            <div className="flex justify-between mb-1">
-              <span className="text-xs font-medium text-white/70">{d.name}</span>
-              <span className="text-xs font-bold text-white">{d._count.employees}</span>
-            </div>
-            <div className="w-full rounded-full h-1.5" style={{ background: "rgba(255,255,255,0.08)" }}>
-              <div className="h-1.5 rounded-full transition-all duration-700"
-                style={{ width: `${pct}%`, background: colors[i % colors.length] }} />
-            </div>
-          </div>
-        );
-      })}
+    <div className="bg-white rounded-xl p-5" style={{ border: "1px solid #E2E8F0" }}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: bg }}>
+          <Icon size={18} style={{ color }} />
+        </div>
+        {trend && (
+          <span
+            className="flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-full"
+            style={trend.value >= 0
+              ? { background: "#E3F6EB", color: "#07845A" }
+              : { background: "#FEE2E2", color: "#EF4444" }}
+          >
+            <TrendingUp size={10} />
+            {trend.value >= 0 ? "+" : ""}{trend.value}%
+          </span>
+        )}
+      </div>
+      <p className="text-2xl font-bold text-[#172B24]">{value}</p>
+      <p className="text-sm text-[#64748B] mt-0.5">{label}</p>
+      {sub && <p className="text-[11px] text-[#94A3B8] mt-1">{sub}</p>}
     </div>
   );
 }
 
 export default function DashboardPage() {
-  const { companyId, companyName, userName, status } = useCompany();
+  const { companyId, companyName, userName, status: authStatus } = useCompany();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
-  const [search, setSearch] = useState("");
-  const [activeLeaveTab, setActiveLeaveTab] = useState<"pending" | "approved">("pending");
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!companyId) return;
     fetch(`/api/dashboard-stats?companyId=${companyId}`)
       .then(r => r.json())
-      .then(d => { setStats(d); setLoading(false); setTimeout(() => setMounted(true), 60); })
+      .then(d => { setStats(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, [companyId]);
 
-  const greeting = () => {
-    const h = new Date().getHours();
-    if (h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
-    return "Good evening";
+  useEffect(() => { load(); }, [load]);
+
+  const handleLeave = async (id: string, status: "APPROVED" | "REJECTED") => {
+    setApprovingId(id);
+    await fetch("/api/leave", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    });
+    load();
+    setApprovingId(null);
   };
 
-  if (status === "loading" || loading) {
+  const now = new Date();
+  const greeting = now.getHours() < 12 ? "Good morning" : now.getHours() < 17 ? "Good afternoon" : "Good evening";
+  const dateStr = now.toLocaleDateString("en-PK", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const firstName = userName?.split(" ")[0] || "there";
+
+  if (authStatus === "loading" || loading) {
     return (
-      <div className="flex flex-col h-full" style={{ background: "#F0F4F2" }}>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 size={28} className="animate-spin text-[#16A34A]" />
-            <p className="text-sm text-[#6B8C7A]">Loading dashboard…</p>
-          </div>
+      <div className="flex items-center justify-center h-full" style={{ background: "#F5F8F6" }}>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={24} className="animate-spin" style={{ color: "#07845A" }} />
+          <p className="text-sm text-[#64748B]">Loading dashboard…</p>
         </div>
       </div>
     );
   }
 
-  const s = stats;
-  const absent = s ? Math.max(0, s.totalEmployees - s.presentToday - s.onLeave - s.lateToday) : 0;
+  const deptChartData = (stats?.departments ?? []).map(d => ({ name: d.name.length > 10 ? d.name.slice(0, 10) + "…" : d.name, employees: d._count.employees }));
+  const leaveData = (stats?.leaveDistribution ?? []).filter(d => d.value > 0);
+  const trendData = (stats?.attendanceTrend ?? []).map(d => ({
+    day: d.day, Present: d.present, Late: d.late, Absent: d.absent,
+  }));
+  const totalEmp = stats?.totalEmployees ?? 0;
+  const attendancePct = stats?.attendanceRate ?? 0;
 
   return (
-    <div
-      className="flex flex-col h-full"
-      style={{ background: "#F0F4F2", opacity: mounted ? 1 : 0, transition: "opacity 0.4s ease" }}
-    >
-      {/* ── Top Header ── */}
-      <header
-        className="h-[64px] flex items-center px-5 gap-4 flex-shrink-0"
-        style={{ background: "white", borderBottom: "1px solid #E2ECE7", boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}
+    <div className="p-6 space-y-5" style={{ background: "#F5F8F6", minHeight: "100%" }}>
+
+      {/* Welcome banner */}
+      <div
+        className="rounded-2xl p-6 flex items-center justify-between"
+        style={{ background: "linear-gradient(135deg, #07845A 0%, #0ca870 60%, #10c87a 100%)" }}
       >
-        <div className="relative flex-1 max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9BB8A8]" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search employees, departments…"
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border focus:outline-none focus:border-[#16A34A] transition-all"
-            style={{ background: "#F5F9F6", borderColor: "#E2ECE7" }}
-          />
+        <div>
+          <p className="text-green-100 text-sm font-medium">{dateStr}</p>
+          <h1 className="text-2xl font-bold text-white mt-1">{greeting}, {firstName}! 👋</h1>
+          <p className="text-green-100 text-sm mt-1">Here&apos;s what&apos;s happening at {companyName} today.</p>
         </div>
-        <div className="flex items-center gap-3 ml-auto">
-          <button className="relative w-9 h-9 rounded-xl border flex items-center justify-center transition-colors hover:bg-[#F5F9F6]"
-            style={{ borderColor: "#E2ECE7" }}>
-            <Bell size={15} className="text-[#6B8C7A]" />
-            {(s?.pendingRequests ?? 0) > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-            )}
-          </button>
-          <Link href="/employees/new"
-            className="flex items-center gap-1.5 px-4 py-2 text-white text-sm font-bold rounded-xl shadow-md transition-all hover:shadow-lg"
-            style={{ background: "linear-gradient(135deg,#16A34A,#22c55e)" }}>
-            <Plus size={14} /> Add Employee
+        <div className="hidden md:flex items-center gap-3">
+          <Link
+            href="/employees/new"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+            style={{ background: "rgba(255,255,255,0.2)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)" }}
+          >
+            <Plus size={15} /> Add Employee
           </Link>
-        </div>
-      </header>
-
-      {/* ── Scrollable Content ── */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-5">
-
-        {/* Welcome + Date */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-black text-[#0D1F15]">
-              {greeting()}, {userName?.split(" ")[0] || "Admin"} 👋
-            </h1>
-            <p className="text-sm text-[#6B8C7A] mt-0.5">
-              {companyName} • {new Date().toLocaleDateString("en-PK", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
-            </p>
-          </div>
-          <Link href="/leave"
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:shadow-md"
-            style={{ background: "white", border: "1px solid #E2ECE7", color: "#0D1F15" }}>
-            <Calendar size={13} className="text-[#16A34A]" />
-            Leave Requests
-            {(s?.pendingRequests ?? 0) > 0 && (
-              <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
-                {s?.pendingRequests}
+          <Link
+            href="/leave"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-white transition-all"
+            style={{ color: "#07845A" }}
+          >
+            <Calendar size={15} /> Leave Requests
+            {(stats?.pendingRequests ?? 0) > 0 && (
+              <span className="w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center" style={{ background: "#EF4444" }}>
+                {stats!.pendingRequests}
               </span>
             )}
           </Link>
         </div>
+      </div>
 
-        {/* ── KPI Cards (4 — dark gradient) ── */}
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          {[
-            {
-              label: "Total Employees", value: s?.totalEmployees ?? 0,
-              sub: "Active headcount", icon: Users,
-              gradient: "linear-gradient(135deg,#071A10 0%,#16A34A 100%)",
-            },
-            {
-              label: "Present Today", value: s?.presentToday ?? 0,
-              sub: `${s?.attendanceRate ?? 0}% attendance rate`, icon: UserCheck,
-              gradient: "linear-gradient(135deg,#1a3a5f 0%,#3B82F6 100%)",
-            },
-            {
-              label: "On Leave", value: s?.onLeave ?? 0,
-              sub: "Approved leaves today", icon: UserMinus,
-              gradient: "linear-gradient(135deg,#451a03 0%,#d97706 100%)",
-            },
-            {
-              label: "Pending Approvals", value: s?.pendingRequests ?? 0,
-              sub: "Leave requests awaiting", icon: Clock,
-              gradient: "linear-gradient(135deg,#2d1f5e 0%,#7C3AED 100%)",
-            },
-          ].map((k, i) => (
-            <div
-              key={k.label}
-              className="rounded-2xl p-5 relative overflow-hidden"
-              style={{ background: k.gradient, boxShadow: "0 4px 20px rgba(0,0,0,0.18)", animationDelay: `${i * 70}ms`, animation: "fadeUp 0.45s ease both" }}
-            >
-              <div className="absolute -top-5 -right-5 w-24 h-24 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }} />
-              <div className="relative z-10">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: "rgba(255,255,255,0.12)" }}>
-                  <k.icon size={17} className="text-white" />
-                </div>
-                <p className="text-3xl font-black text-white leading-none">{k.value}</p>
-                <p className="text-xs font-bold text-white/70 mt-1.5">{k.label}</p>
-                <p className="text-[10px] text-white/40 mt-0.5">{k.sub}</p>
-              </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Total Employees" value={totalEmp}
+          icon={Users} color="#07845A" bg="#E3F6EB"
+          trend={{ value: 8, label: "vs last month" }}
+        />
+        <StatCard
+          label="Present Today" value={stats?.presentToday ?? 0}
+          icon={UserCheck} color="#3B82F6" bg="#DBEAFE"
+          sub={`${attendancePct}% attendance rate`}
+        />
+        <StatCard
+          label="On Leave" value={stats?.onLeave ?? 0}
+          icon={Calendar} color="#F59E0B" bg="#FEF3C7"
+          sub={`${stats?.pendingRequests ?? 0} pending requests`}
+        />
+        <StatCard
+          label="Absent Today" value={stats?.absentToday ?? 0}
+          icon={UserX} color="#EF4444" bg="#FEE2E2"
+          sub={`${stats?.lateToday ?? 0} arrived late`}
+        />
+      </div>
+
+      {/* Second row KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Late Arrivals" value={stats?.lateToday ?? 0}
+          icon={Clock} color="#F97316" bg="#FFEDD5"
+        />
+        <StatCard
+          label="Pending Approvals" value={stats?.pendingRequests ?? 0}
+          icon={AlertTriangle} color="#EF4444" bg="#FEE2E2"
+        />
+        <StatCard
+          label="Departments" value={stats?.departments?.length ?? 0}
+          icon={Building2} color="#8B5CF6" bg="#EDE9FE"
+        />
+        <StatCard
+          label="Monthly Payroll" value={`PKR ${((stats?.totalPayroll ?? 0) / 1000).toFixed(0)}K`}
+          icon={DollarSign} color="#06B6D4" bg="#CFFAFE"
+        />
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        {/* Attendance Trend */}
+        <div className="lg:col-span-2 bg-white rounded-xl p-5" style={{ border: "1px solid #E2E8F0" }}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-bold text-[#172B24]">Attendance Trend</h2>
+              <p className="text-[11px] text-[#64748B] mt-0.5">Last 7 days overview</p>
             </div>
-          ))}
+            <Link href="/attendance" className="text-xs font-semibold flex items-center gap-1" style={{ color: "#07845A" }}>
+              View all <ArrowUpRight size={12} />
+            </Link>
+          </div>
+          {trendData.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-sm text-[#94A3B8]">No attendance data yet</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={trendData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barSize={10} barGap={2}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E2E8F0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+                  cursor={{ fill: "#F8FAFC" }}
+                />
+                <Bar dataKey="Present" fill="#07845A" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Late" fill="#F59E0B" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Absent" fill="#EF4444" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+          <div className="flex gap-4 mt-2">
+            {[{ label: "Present", color: "#07845A" }, { label: "Late", color: "#F59E0B" }, { label: "Absent", color: "#EF4444" }].map(l => (
+              <div key={l.label} className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: l.color }} />
+                <span className="text-[11px] text-[#64748B]">{l.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* ── Row 2: Attendance Trend (dark) + Today Summary + Dept ── */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-
-          {/* Attendance Trend — dark card */}
-          <div className="xl:col-span-2 rounded-2xl p-5" style={{ background: "linear-gradient(135deg,#071A10 0%,#0A2A1A 100%)", boxShadow: "0 4px 20px rgba(0,0,0,0.2)", animation: "fadeUp 0.45s ease both", animationDelay: "120ms" }}>
-            <div className="flex items-center justify-between mb-1">
-              <div>
-                <h3 className="text-sm font-bold text-white">Attendance Trend</h3>
-                <p className="text-[11px] text-white/40">Last 7 days</p>
-              </div>
-              <div className="flex items-center gap-4 text-[10px] font-semibold">
-                <span className="flex items-center gap-1 text-green-400"><span className="w-2 h-2 rounded-full bg-green-400 inline-block" />Present</span>
-                <span className="flex items-center gap-1 text-amber-400"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />Late</span>
-                <span className="flex items-center gap-1 text-red-400"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />Absent</span>
-              </div>
+        {/* Department Distribution */}
+        <div className="bg-white rounded-xl p-5" style={{ border: "1px solid #E2E8F0" }}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-bold text-[#172B24]">By Department</h2>
+              <p className="text-[11px] text-[#64748B] mt-0.5">Employee distribution</p>
             </div>
-            {s?.attendanceTrend && s.attendanceTrend.length > 0 ? (
-              <AttendanceBar data={s.attendanceTrend} />
-            ) : (
-              <div className="h-28 flex items-center justify-center text-white/30 text-xs">No attendance recorded yet</div>
-            )}
-            <div className="flex items-center gap-4 mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-              {[
-                { label: "On-Time", value: s?.presentToday ?? 0, color: "text-green-400" },
-                { label: "Late", value: s?.lateToday ?? 0, color: "text-amber-400" },
-                { label: "Absent", value: absent, color: "text-red-400" },
-              ].map(item => (
-                <div key={item.label} className="flex items-center gap-2">
-                  <span className={`text-lg font-black ${item.color}`}>{item.value}</span>
-                  <span className="text-[10px] text-white/40 font-medium">{item.label}</span>
-                </div>
-              ))}
-            </div>
+            <Link href="/departments" className="text-xs font-semibold flex items-center gap-1" style={{ color: "#07845A" }}>
+              View <ArrowUpRight size={12} />
+            </Link>
           </div>
-
-          {/* Today's Summary (donut-like) */}
-          <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg,#1e3a5f 0%,#1e40af 100%)", boxShadow: "0 4px 20px rgba(0,0,0,0.18)", animation: "fadeUp 0.45s ease both", animationDelay: "180ms" }}>
-            <h3 className="text-sm font-bold text-white mb-0.5">Today's Overview</h3>
-            <p className="text-[11px] text-white/40 mb-5">Real-time attendance</p>
-            <div className="flex flex-col gap-4">
-              {[
-                { label: "Present", value: s?.presentToday ?? 0, total: s?.totalEmployees ?? 1, color: "#22c55e" },
-                { label: "On Leave", value: s?.onLeave ?? 0, total: s?.totalEmployees ?? 1, color: "#F59E0B" },
-                { label: "Late", value: s?.lateToday ?? 0, total: s?.totalEmployees ?? 1, color: "#f97316" },
-                { label: "Absent", value: absent, total: s?.totalEmployees ?? 1, color: "#EF4444" },
-              ].map(item => {
-                const pct = item.total > 0 ? Math.round((item.value / item.total) * 100) : 0;
+          {deptChartData.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-sm text-[#94A3B8]">No departments yet</div>
+          ) : (
+            <div className="space-y-3">
+              {(stats?.departments ?? []).slice(0, 6).map((d, i) => {
+                const pct = totalEmp > 0 ? Math.round((d._count.employees / totalEmp) * 100) : 0;
                 return (
-                  <div key={item.label} className="flex items-center gap-3">
-                    <MiniDonut pct={pct} color={item.color} />
-                    <div>
-                      <p className="text-xs font-bold text-white">{item.label}</p>
-                      <p className="text-[10px] text-white/40">{item.value} employees</p>
+                  <div key={d.id}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-[#475569] truncate max-w-[120px]">{d.name}</span>
+                      <span className="text-xs font-semibold text-[#172B24]">{d._count.employees}</span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full" style={{ background: "#F1F5F9" }}>
+                      <div
+                        className="h-1.5 rounded-full transition-all duration-700"
+                        style={{ width: `${pct}%`, background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
+                      />
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
+          )}
         </div>
+      </div>
 
-        {/* ── Row 3: Dept + Leave Distribution + Payroll ── */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      {/* Third row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-          {/* Department Headcount */}
-          <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg,#2d1f5e 0%,#4c1d95 100%)", boxShadow: "0 4px 20px rgba(0,0,0,0.18)", animation: "fadeUp 0.45s ease both", animationDelay: "100ms" }}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-white">Departments</h3>
-                <p className="text-[11px] text-white/40">Headcount by team</p>
-              </div>
-              <Link href="/departments" className="text-[10px] font-bold text-purple-300 hover:text-white flex items-center gap-1">
-                View All <ChevronRight size={10} />
-              </Link>
+        {/* Leave Distribution Pie */}
+        <div className="bg-white rounded-xl p-5" style={{ border: "1px solid #E2E8F0" }}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-bold text-[#172B24]">Leave Utilization</h2>
+              <p className="text-[11px] text-[#64748B] mt-0.5">By leave type</p>
             </div>
-            {s?.departments && s.departments.length > 0 ? (
-              <DeptBar depts={s.departments} total={s.totalEmployees} />
-            ) : (
-              <div className="h-24 flex items-center justify-center text-white/30 text-xs">No departments yet</div>
-            )}
           </div>
-
-          {/* Leave Distribution */}
-          <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg,#451a03 0%,#92400e 100%)", boxShadow: "0 4px 20px rgba(0,0,0,0.18)", animation: "fadeUp 0.45s ease both", animationDelay: "140ms" }}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-white">Leave Distribution</h3>
-                <p className="text-[11px] text-white/40">By leave type</p>
-              </div>
-              <Link href="/leave-types" className="text-[10px] font-bold text-amber-300 hover:text-white flex items-center gap-1">
-                Manage <ChevronRight size={10} />
-              </Link>
-            </div>
-            {s?.leaveDistribution && s.leaveDistribution.length > 0 ? (
-              <div className="space-y-3">
-                {s.leaveDistribution.map((ld, i) => (
-                  <div key={i}>
-                    <div className="flex justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ld.color || "#F59E0B" }} />
-                        <span className="text-xs text-white/70 font-medium">{ld.name}</span>
-                      </div>
-                      <span className="text-xs font-bold text-white">{ld.value}</span>
+          {leaveData.length === 0 ? (
+            <div className="h-32 flex items-center justify-center text-sm text-[#94A3B8]">No leave data</div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={140}>
+                <PieChart>
+                  <Pie data={leaveData} dataKey="value" cx="50%" cy="50%" outerRadius={60} innerRadius={35}>
+                    {leaveData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color || AVATAR_COLORS[i % AVATAR_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1.5 mt-2">
+                {leaveData.map((d, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color || AVATAR_COLORS[i % AVATAR_COLORS.length] }} />
+                      <span className="text-[11px] text-[#64748B]">{d.name}</span>
                     </div>
-                    <div className="w-full rounded-full h-1.5" style={{ background: "rgba(255,255,255,0.08)" }}>
-                      <div className="h-1.5 rounded-full" style={{ width: `${Math.min(ld.value * 8, 100)}%`, background: ld.color || "#F59E0B" }} />
-                    </div>
+                    <span className="text-[11px] font-semibold text-[#172B24]">{d.value}</span>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="h-24 flex items-center justify-center text-white/30 text-xs">No leave requests yet</div>
-            )}
-          </div>
-
-          {/* Payroll Summary */}
-          <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg,#071A10 0%,#064E3B 100%)", boxShadow: "0 4px 20px rgba(0,0,0,0.18)", animation: "fadeUp 0.45s ease both", animationDelay: "180ms" }}>
-            <h3 className="text-sm font-bold text-white mb-0.5">Payroll Overview</h3>
-            <p className="text-[11px] text-white/40 mb-5">Monthly cost estimate</p>
-            <div className="flex items-end gap-3 mb-5">
-              <div>
-                <p className="text-2xl font-black text-white">
-                  PKR {((s?.totalPayroll ?? 0) / 1000).toFixed(0)}K
-                </p>
-                <p className="text-[10px] text-white/40 mt-0.5">Total monthly salary</p>
-              </div>
-              <div className="mb-1 flex items-center gap-1 text-green-400 text-xs font-bold">
-                <TrendingUp size={12} />
-                Active
-              </div>
-            </div>
-            <div className="space-y-3">
-              {[
-                { label: "Total Employees", value: s?.totalEmployees ?? 0, sub: "On payroll" },
-                { label: "Avg Salary", value: s?.totalEmployees ? `PKR ${Math.round((s.totalPayroll / s.totalEmployees) / 1000)}K` : "N/A", sub: "Per employee" },
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between py-2.5 px-3 rounded-xl" style={{ background: "rgba(255,255,255,0.07)" }}>
-                  <div>
-                    <p className="text-xs font-bold text-white">{item.label}</p>
-                    <p className="text-[10px] text-white/40">{item.sub}</p>
-                  </div>
-                  <p className="text-sm font-black text-green-400">{item.value}</p>
-                </div>
-              ))}
-              <Link href="/payroll"
-                className="flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90"
-                style={{ background: "rgba(22,163,74,0.25)", border: "1px solid rgba(22,163,74,0.4)" }}>
-                <DollarSign size={12} /> View Payroll <ArrowUpRight size={11} />
-              </Link>
-            </div>
-          </div>
+            </>
+          )}
         </div>
 
-        {/* ── Row 4: Pending Leaves + Recent Check-ins + New Joiners ── */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-
-          {/* Pending Leave Approvals */}
-          <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 2px 16px rgba(0,0,0,0.06)", border: "1px solid #E2ECE7", animation: "fadeUp 0.45s ease both", animationDelay: "80ms" }}>
-            <div className="px-5 py-4 flex items-center justify-between" style={{ background: "linear-gradient(90deg,#071A10,#0A2A1A)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="flex items-center gap-2">
-                <Calendar size={14} className="text-green-400" />
-                <span className="text-sm font-bold text-white">Pending Leaves</span>
-                {(s?.pendingRequests ?? 0) > 0 && (
-                  <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
-                    {s?.pendingRequests}
-                  </span>
-                )}
-              </div>
-              <Link href="/leave" className="text-[10px] font-bold text-green-400 hover:text-green-300 flex items-center gap-0.5">
-                All <ChevronRight size={10} />
-              </Link>
+        {/* Today's Attendance */}
+        <div className="bg-white rounded-xl p-5" style={{ border: "1px solid #E2E8F0" }}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-bold text-[#172B24]">Today&apos;s Check-ins</h2>
+              <p className="text-[11px] text-[#64748B] mt-0.5">Recent attendance activity</p>
             </div>
-            <div className="divide-y divide-[#F0F4F2]">
-              {s?.pendingLeaveDetails && s.pendingLeaveDetails.length > 0 ? (
-                s.pendingLeaveDetails.map((lr) => (
-                  <div key={lr.id} className="px-4 py-3 hover:bg-[#F5F9F6] transition-colors">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-black flex-shrink-0"
-                        style={{ background: "linear-gradient(135deg,#16A34A,#22c55e)" }}
-                      >
-                        {lr.employee.firstName[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-[#0D1F15] truncate">
-                          {lr.employee.firstName} {lr.employee.lastName}
-                        </p>
-                        <p className="text-[10px] text-[#9BB8A8] truncate">{lr.employee.designation}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white"
-                            style={{ background: lr.leaveType.color || "#16A34A" }}>
-                            {lr.leaveType.name}
-                          </span>
-                          <span className="text-[9px] text-[#9BB8A8]">
-                            {new Date(lr.startDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })}
-                            {lr.endDate !== lr.startDate && ` – ${new Date(lr.endDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })}`}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <Link href="/leave"
-                          className="text-[9px] font-bold px-2 py-1 rounded-lg text-white"
-                          style={{ background: "#16A34A" }}>
-                          Approve
-                        </Link>
-                        <Link href="/leave"
-                          className="text-[9px] font-bold px-2 py-1 rounded-lg text-center"
-                          style={{ background: "#FEF2F2", color: "#EF4444" }}>
-                          Reject
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="py-10 text-center text-xs text-[#9BB8A8]">No pending requests</div>
-              )}
-            </div>
-          </div>
-
-          {/* Recent Check-ins */}
-          <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 2px 16px rgba(0,0,0,0.06)", border: "1px solid #E2ECE7", animation: "fadeUp 0.45s ease both", animationDelay: "140ms" }}>
-            <div className="px-5 py-4 flex items-center justify-between" style={{ background: "linear-gradient(90deg,#1e3a5f,#1e40af)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="flex items-center gap-2">
-                <Activity size={14} className="text-blue-300" />
-                <span className="text-sm font-bold text-white">Today's Check-ins</span>
-              </div>
-              <Link href="/attendance" className="text-[10px] font-bold text-blue-300 hover:text-blue-200 flex items-center gap-0.5">
-                All <ChevronRight size={10} />
-              </Link>
-            </div>
-            <div className="divide-y divide-[#F0F4F2]">
-              {s?.recentAttendance && s.recentAttendance.length > 0 ? (
-                s.recentAttendance.map((a: any) => {
-                  const statusStyle = a.status === "PRESENT"
-                    ? { bg: "rgba(22,163,74,0.1)", color: "#16A34A" }
-                    : a.status === "LATE"
-                    ? { bg: "rgba(245,158,11,0.1)", color: "#F59E0B" }
-                    : { bg: "rgba(239,68,68,0.1)", color: "#EF4444" };
-                  return (
-                    <div key={a.id} className="px-4 py-3 flex items-center gap-3 hover:bg-[#F5F9F6] transition-colors">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-black flex-shrink-0"
-                        style={{ background: "linear-gradient(135deg,#1e40af,#3B82F6)" }}
-                      >
-                        {a.employee.firstName[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-[#0D1F15] truncate">
-                          {a.employee.firstName} {a.employee.lastName}
-                        </p>
-                        <p className="text-[10px] text-[#9BB8A8] truncate">{a.employee.department?.name ?? "—"}</p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs font-mono font-bold text-[#0D1F15]">
-                          {a.checkIn ? new Date(a.checkIn).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" }) : "—"}
-                        </p>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                          style={{ background: statusStyle.bg, color: statusStyle.color }}>
-                          {a.status}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="py-10 text-center text-xs text-[#9BB8A8]">No check-ins today yet</div>
-              )}
-            </div>
-          </div>
-
-          {/* New Joiners */}
-          <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 2px 16px rgba(0,0,0,0.06)", border: "1px solid #E2ECE7", animation: "fadeUp 0.45s ease both", animationDelay: "200ms" }}>
-            <div className="px-5 py-4 flex items-center justify-between" style={{ background: "linear-gradient(90deg,#2d1f5e,#4c1d95)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="flex items-center gap-2">
-                <Star size={14} className="text-purple-300" />
-                <span className="text-sm font-bold text-white">Recent Joiners</span>
-              </div>
-              <Link href="/employees" className="text-[10px] font-bold text-purple-300 hover:text-purple-200 flex items-center gap-0.5">
-                All <ChevronRight size={10} />
-              </Link>
-            </div>
-            <div className="divide-y divide-[#F0F4F2]">
-              {s?.recentJoiners && s.recentJoiners.length > 0 ? (
-                s.recentJoiners.map((j, i) => (
-                  <div key={i} className="px-4 py-3.5 flex items-center gap-3 hover:bg-[#F5F9F6] transition-colors">
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[11px] font-black flex-shrink-0"
-                      style={{ background: "linear-gradient(135deg,#4c1d95,#7C3AED)" }}
-                    >
-                      {j.firstName[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-[#0D1F15] truncate">{j.firstName} {j.lastName}</p>
-                      <p className="text-[10px] text-[#9BB8A8] truncate">{j.designation}</p>
-                      {j.department && <p className="text-[9px] text-[#C5D9CE] truncate">{j.department.name}</p>}
-                    </div>
-                    <div className="flex-shrink-0 text-right">
-                      <p className="text-[9px] text-[#9BB8A8]">Joined</p>
-                      <p className="text-[10px] font-bold text-[#0D1F15]">
-                        {new Date(j.joiningDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="py-10 text-center text-xs text-[#9BB8A8]">No recent joiners</div>
-              )}
-              <div className="px-4 py-3">
-                <Link href="/employees/new"
-                  className="flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold text-white w-full transition-all hover:opacity-90"
-                  style={{ background: "linear-gradient(135deg,#4c1d95,#7C3AED)" }}>
-                  <Plus size={12} /> Add New Employee
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Row 5: Quick Actions ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: "Mark Attendance", href: "/attendance", icon: CheckCircle2, color: "#16A34A", bg: "rgba(22,163,74,0.08)" },
-            { label: "Leave Approvals", href: "/leave", icon: Calendar, color: "#F59E0B", bg: "rgba(245,158,11,0.08)" },
-            { label: "Run Payroll", href: "/payroll", icon: DollarSign, color: "#7C3AED", bg: "rgba(124,58,237,0.08)" },
-            { label: "Add Department", href: "/departments", icon: Users, color: "#3B82F6", bg: "rgba(59,130,246,0.08)" },
-          ].map(q => (
-            <Link key={q.label} href={q.href}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white transition-all hover:shadow-md hover:-translate-y-0.5"
-              style={{ border: "1px solid #E2ECE7", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: q.bg }}>
-                <q.icon size={16} style={{ color: q.color }} />
-              </div>
-              <span className="text-xs font-bold text-[#0D1F15]">{q.label}</span>
-              <ArrowUpRight size={12} className="ml-auto text-[#C5D9CE]" />
+            <Link href="/attendance" className="text-xs font-semibold flex items-center gap-1" style={{ color: "#07845A" }}>
+              View all <ArrowUpRight size={12} />
             </Link>
-          ))}
+          </div>
+          {(stats?.recentAttendance ?? []).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <Activity size={24} className="text-[#CBD5E1] mb-2" />
+              <p className="text-xs text-[#94A3B8]">No check-ins recorded yet today</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(stats?.recentAttendance ?? []).slice(0, 5).map((a, i) => {
+                const statusColor = STATUS_COLORS[a.status] ?? "#64748B";
+                const statusBg = STATUS_BG[a.status] ?? "#F1F5F9";
+                const checkInTime = a.checkIn ? new Date(a.checkIn).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" }) : "—";
+                return (
+                  <div key={i} className="flex items-center gap-3">
+                    <Avatar name={`${a.employee.firstName} ${a.employee.lastName}`} index={i} size={32} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-[#172B24] truncate">
+                        {a.employee.firstName} {a.employee.lastName}
+                      </p>
+                      <p className="text-[10px] text-[#94A3B8]">{checkInTime}</p>
+                    </div>
+                    <span
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+                      style={{ background: statusBg, color: statusColor }}
+                    >
+                      {a.status === "PRESENT" ? "Present" : a.status === "LATE" ? "Late" : a.status}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
+        {/* Quick Actions */}
+        <div className="bg-white rounded-xl p-5" style={{ border: "1px solid #E2E8F0" }}>
+          <h2 className="text-sm font-bold text-[#172B24] mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              { href: "/employees/new", label: "Add Employee", icon: UserPlus, color: "#07845A", bg: "#E3F6EB" },
+              { href: "/leave", label: "Leave Requests", icon: Calendar, color: "#F59E0B", bg: "#FEF3C7" },
+              { href: "/payroll", label: "Run Payroll", icon: DollarSign, color: "#3B82F6", bg: "#DBEAFE" },
+              { href: "/attendance", label: "Attendance", icon: UserCheck, color: "#8B5CF6", bg: "#EDE9FE" },
+              { href: "/reports", label: "Reports", icon: BarChart3, color: "#06B6D4", bg: "#CFFAFE" },
+              { href: "/settings", label: "Settings", icon: Building2, color: "#64748B", bg: "#F1F5F9" },
+            ].map(q => (
+              <Link
+                key={q.href}
+                href={q.href}
+                className="flex flex-col items-center gap-2 p-3 rounded-xl text-center transition-all hover:scale-[1.02]"
+                style={{ background: q.bg }}
+              >
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white shadow-sm">
+                  <q.icon size={16} style={{ color: q.color }} />
+                </div>
+                <span className="text-[11px] font-semibold" style={{ color: q.color }}>{q.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <style jsx global>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(14px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+      {/* Fourth row: Pending Leaves + Recent Joiners */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* Pending Leave Requests */}
+        <div className="bg-white rounded-xl overflow-hidden" style={{ border: "1px solid #E2E8F0" }}>
+          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #F1F5F9" }}>
+            <div>
+              <h2 className="text-sm font-bold text-[#172B24]">Pending Leave Requests</h2>
+              <p className="text-[11px] text-[#64748B]">{stats?.pendingRequests ?? 0} awaiting approval</p>
+            </div>
+            <Link href="/leave" className="text-xs font-semibold flex items-center gap-1" style={{ color: "#07845A" }}>
+              View all <ChevronRight size={12} />
+            </Link>
+          </div>
+          {(stats?.pendingLeaveDetails ?? []).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center px-5">
+              <CheckCircle2 size={28} className="text-[#CBD5E1] mb-2" />
+              <p className="text-xs text-[#94A3B8]">All leave requests have been processed</p>
+            </div>
+          ) : (
+            <div className="divide-y" style={{ borderColor: "#F8FAFC" }}>
+              {(stats?.pendingLeaveDetails ?? []).slice(0, 4).map((req, i) => (
+                <div key={req.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[#FAFAFA] transition-colors">
+                  <Avatar name={`${req.employee.firstName} ${req.employee.lastName}`} index={i} size={36} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-[#172B24]">{req.employee.firstName} {req.employee.lastName}</p>
+                    <p className="text-[10px] text-[#64748B]">{req.employee.designation}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-white"
+                        style={{ background: req.leaveType.color || "#07845A" }}>
+                        {req.leaveType.name}
+                      </span>
+                      <span className="text-[10px] text-[#94A3B8]">
+                        {new Date(req.startDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })}
+                        {req.endDate !== req.startDate && ` – ${new Date(req.endDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })}`}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    <button
+                      onClick={() => handleLeave(req.id, "APPROVED")}
+                      disabled={approvingId === req.id}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-105 disabled:opacity-50"
+                      style={{ background: "#E3F6EB" }}
+                      title="Approve"
+                    >
+                      {approvingId === req.id
+                        ? <Loader2 size={12} className="animate-spin text-[#07845A]" />
+                        : <CheckCircle2 size={13} style={{ color: "#07845A" }} />
+                      }
+                    </button>
+                    <button
+                      onClick={() => handleLeave(req.id, "REJECTED")}
+                      disabled={approvingId === req.id}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-105 disabled:opacity-50"
+                      style={{ background: "#FEE2E2" }}
+                      title="Reject"
+                    >
+                      <XCircle size={13} style={{ color: "#EF4444" }} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Recent Joiners */}
+        <div className="bg-white rounded-xl overflow-hidden" style={{ border: "1px solid #E2E8F0" }}>
+          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #F1F5F9" }}>
+            <div>
+              <h2 className="text-sm font-bold text-[#172B24]">Recent Employees</h2>
+              <p className="text-[11px] text-[#64748B]">Latest additions to your team</p>
+            </div>
+            <Link href="/employees" className="text-xs font-semibold flex items-center gap-1" style={{ color: "#07845A" }}>
+              View all <ChevronRight size={12} />
+            </Link>
+          </div>
+          {(stats?.recentJoiners ?? []).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center px-5">
+              <Users size={28} className="text-[#CBD5E1] mb-2" />
+              <p className="text-xs text-[#94A3B8]">No employees added yet</p>
+            </div>
+          ) : (
+            <div className="divide-y" style={{ borderColor: "#F8FAFC" }}>
+              {(stats?.recentJoiners ?? []).map((e, i) => (
+                <div key={i} className="flex items-center gap-3 px-5 py-3 hover:bg-[#FAFAFA] transition-colors">
+                  <Avatar name={`${e.firstName} ${e.lastName}`} index={i} size={36} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-[#172B24]">{e.firstName} {e.lastName}</p>
+                    <p className="text-[10px] text-[#64748B]">{e.designation}</p>
+                    {e.department && (
+                      <p className="text-[10px] text-[#94A3B8]">{e.department.name}</p>
+                    )}
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-[10px] font-semibold px-2 py-1 rounded-full" style={{ background: "#E3F6EB", color: "#07845A" }}>
+                      New
+                    </span>
+                    <p className="text-[10px] text-[#94A3B8] mt-1">
+                      {e.joiningDate ? new Date(e.joiningDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Platform Stats row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: "Total Companies", value: "—", sub: "Super Admin only", icon: Building2, color: "#8B5CF6" },
+          { label: "Departments", value: stats?.departments?.length ?? 0, sub: "In your company", icon: Building2, color: "#07845A" },
+          { label: "Attendance Rate", value: `${attendancePct}%`, sub: "Today", icon: UserCheck, color: "#3B82F6" },
+          { label: "Open Positions", value: "—", sub: "Recruitment module soon", icon: TrendingUp, color: "#F59E0B" },
+        ].map(s => (
+          <div key={s.label} className="bg-white rounded-xl px-4 py-3 flex items-center gap-3" style={{ border: "1px solid #E2E8F0" }}>
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "#F8FAFC" }}>
+              <s.icon size={16} style={{ color: s.color }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-[#172B24]">{s.value}</p>
+              <p className="text-[10px] text-[#94A3B8] truncate">{s.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 }

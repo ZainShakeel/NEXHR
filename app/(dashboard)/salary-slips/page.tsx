@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, FileText, Loader2, ExternalLink } from "lucide-react";
+import { Search, FileText, Loader2, ExternalLink, Download, TrendingUp, DollarSign, Clock } from "lucide-react";
 import Link from "next/link";
 import { useCompany } from "@/hooks/useCompany";
 
@@ -13,13 +13,7 @@ type Slip = {
 };
 
 const MONTHS = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-const AVATAR_GRADIENTS = [
-  "linear-gradient(135deg,#071A10,#16A34A)",
-  "linear-gradient(135deg,#1e3a5f,#3B82F6)",
-  "linear-gradient(135deg,#2d1f5e,#7C3AED)",
-  "linear-gradient(135deg,#451a03,#d97706)",
-];
+const AVATAR_COLORS = ["#07845A", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444", "#06B6D4"];
 
 export default function SalarySlipsPage() {
   const { companyId, status: authStatus } = useCompany();
@@ -51,128 +45,130 @@ export default function SalarySlipsPage() {
 
   if (authStatus === "loading" || loading) {
     return (
-      <div className="flex-1 flex items-center justify-center h-full" style={{ background: "#F0F4F2" }}>
-        <Loader2 size={24} className="animate-spin text-[#16A34A]" />
+      <div className="flex items-center justify-center h-full" style={{ background: "#F5F8F6" }}>
+        <Loader2 size={22} className="animate-spin" style={{ color: "#07845A" }} />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#F0F4F2" }}>
-      <div className="flex-shrink-0 px-5 pt-5 pb-4">
-        <h1 className="text-xl font-black text-[#0D1F15]">Salary Slips</h1>
-        <p className="text-sm text-[#6B8C7A] mt-0.5">{slips.length} salary slips generated</p>
+    <div className="p-6 space-y-5" style={{ background: "#F5F8F6", minHeight: "100%" }}>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-[#172B24]">Salary Slips</h1>
+          <p className="text-sm text-[#64748B] mt-0.5">{slips.length} salary slips generated</p>
+        </div>
+        <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors"
+          style={{ background: "#fff", border: "1px solid #E2E8F0", color: "#475569" }}>
+          <Download size={14} /> Export
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-4">
-
-        {/* KPI Row */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Total Slips", value: slips.length, gradient: "linear-gradient(135deg,#2d1f5e,#7C3AED)" },
-            { label: "Total Paid", value: `PKR ${(totalPaid / 1000).toFixed(0)}K`, gradient: "linear-gradient(135deg,#071A10,#16A34A)" },
-            { label: "Pending", value: `PKR ${(totalPending / 1000).toFixed(0)}K`, gradient: "linear-gradient(135deg,#451a03,#d97706)" },
-          ].map(k => (
-            <div key={k.label} className="rounded-2xl p-5 relative overflow-hidden" style={{ background: k.gradient, boxShadow: "0 4px 16px rgba(0,0,0,0.18)" }}>
-              <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
-              <p className="text-2xl font-black text-white">{k.value}</p>
-              <p className="text-[11px] text-white/60 font-semibold mt-0.5">{k.label}</p>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: "Total Slips", value: slips.length, icon: FileText, color: "#8B5CF6", bg: "#EDE9FE" },
+          { label: "Total Paid", value: `PKR ${(totalPaid / 1000).toFixed(0)}K`, icon: DollarSign, color: "#07845A", bg: "#E3F6EB" },
+          { label: "Pending", value: `PKR ${(totalPending / 1000).toFixed(0)}K`, icon: Clock, color: "#F59E0B", bg: "#FEF3C7" },
+        ].map(k => (
+          <div key={k.label} className="bg-white rounded-xl p-5 flex items-center gap-4" style={{ border: "1px solid #E2E8F0" }}>
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: k.bg }}>
+              <k.icon size={20} style={{ color: k.color }} />
             </div>
-          ))}
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3 bg-white rounded-2xl px-4 py-3" style={{ border: "1px solid #E2ECE7", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}>
-          <div className="relative flex-1 min-w-[200px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9BB8A8]" />
-            <input type="text" placeholder="Search employee…" value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm rounded-xl focus:outline-none"
-              style={{ background: "#F5F9F6", border: "1px solid #E2ECE7" }} />
-          </div>
-          <input type="month" value={monthFilter} onChange={e => setMonthFilter(e.target.value)}
-            className="px-3 py-2 text-sm rounded-xl focus:outline-none font-medium"
-            style={{ background: "#F5F9F6", border: "1px solid #E2ECE7", color: "#0D1F15" }} />
-          {monthFilter && (
-            <button onClick={() => setMonthFilter("")}
-              className="px-3 py-2 text-xs font-bold rounded-xl transition-all"
-              style={{ background: "#F5F9F6", color: "#9BB8A8", border: "1px solid #E2ECE7" }}>
-              Clear
-            </button>
-          )}
-        </div>
-
-        {/* Table */}
-        <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1px solid #E2ECE7" }}>
-          <div className="px-5 py-3.5 flex items-center gap-3" style={{ background: "linear-gradient(90deg,#2d1f5e,#4c1d95)" }}>
-            <FileText size={14} className="text-purple-300" />
-            <span className="text-sm font-bold text-white">Salary Slips</span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full ml-1" style={{ background: "rgba(167,139,250,0.2)", color: "#a78bfa" }}>
-              {filtered.length}
-            </span>
-          </div>
-
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: "rgba(124,58,237,0.08)" }}>
-                <FileText size={24} className="text-[#7C3AED]" />
-              </div>
-              <p className="text-sm font-bold text-[#0D1F15]">No salary slips found</p>
-              <p className="text-xs text-[#9BB8A8] mt-1">Generate payroll from the Payroll section first</p>
+            <div>
+              <p className="text-2xl font-bold text-[#172B24]">{k.value}</p>
+              <p className="text-sm text-[#64748B]">{k.label}</p>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr style={{ background: "#F8FAF9", borderBottom: "1px solid #EEF5F1" }}>
-                    {["Employee", "Month", "Basic", "Allowances", "Deductions", "Net Salary", "Status", ""].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-[10px] font-bold text-[#6B8C7A] uppercase tracking-wider">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((s, i) => (
-                    <tr key={s.id} className="border-b last:border-0 hover:bg-[#F8FAF9] transition-colors" style={{ borderColor: "#EEF5F1" }}>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black"
-                            style={{ background: AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length] }}>
-                            {s.employee.firstName[0]}{s.employee.lastName[0]}
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-[#0D1F15]">{s.employee.firstName} {s.employee.lastName}</p>
-                            <p className="text-[10px] text-[#9BB8A8] font-mono">{s.employee.employeeId}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 text-xs font-semibold text-[#6B8C7A]">{MONTHS[s.month]} {s.year}</td>
-                      <td className="px-4 py-3.5 text-xs text-[#6B8C7A]">PKR {Number(s.basicSalary).toLocaleString()}</td>
-                      <td className="px-4 py-3.5 text-xs text-[#16A34A] font-semibold">+PKR {Number(s.allowances).toLocaleString()}</td>
-                      <td className="px-4 py-3.5 text-xs text-red-500 font-semibold">−PKR {Number(s.otherDeductions).toLocaleString()}</td>
-                      <td className="px-4 py-3.5">
-                        <span className="text-sm font-black" style={{ color: "#16A34A" }}>PKR {Number(s.netSalary).toLocaleString()}</span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full"
-                          style={s.isPaid
-                            ? { background: "rgba(22,163,74,0.1)", color: "#16A34A" }
-                            : { background: "rgba(245,158,11,0.1)", color: "#D97706" }}>
-                          {s.isPaid ? "Paid" : "Pending"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <Link href={`/salary-slips/${s.id}`}
-                          className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all hover:shadow"
-                          style={{ background: "rgba(124,58,237,0.1)", color: "#7C3AED" }}>
-                          <ExternalLink size={10} /> View
-                        </Link>
-                      </td>
-                    </tr>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-xl p-4 flex flex-wrap gap-3 items-center" style={{ border: "1px solid #E2E8F0" }}>
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#94A3B8" }} />
+          <input type="text" placeholder="Search employee…" value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-lg focus:outline-none"
+            style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }} />
+        </div>
+        <input type="month" value={monthFilter} onChange={e => setMonthFilter(e.target.value)}
+          className="px-3 py-2 text-sm rounded-lg focus:outline-none"
+          style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#475569" }} />
+        {monthFilter && (
+          <button onClick={() => setMonthFilter("")}
+            className="px-3 py-2 text-xs font-medium rounded-lg"
+            style={{ background: "#FEE2E2", color: "#EF4444" }}>
+            Clear
+          </button>
+        )}
+        <span className="ml-auto text-sm text-[#64748B]">{filtered.length} slips</span>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl overflow-hidden" style={{ border: "1px solid #E2E8F0" }}>
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: "#EDE9FE" }}>
+              <FileText size={24} style={{ color: "#8B5CF6" }} />
+            </div>
+            <p className="text-sm font-semibold text-[#475569]">No salary slips found</p>
+            <p className="text-xs text-[#94A3B8] mt-1">Generate payroll first to create salary slips</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr style={{ borderBottom: "1px solid #F1F5F9", background: "#FAFAFA" }}>
+                  {["Employee", "Month", "Basic Salary", "Allowances", "Deductions", "Net Salary", "Status", ""].map(h => (
+                    <th key={h} className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[#94A3B8]">{h}</th>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                </tr>
+              </thead>
+              <tbody className="divide-y" style={{ borderColor: "#F8FAFC" }}>
+                {filtered.map((s, i) => (
+                  <tr key={s.id} className="hover:bg-[#FAFAFA] transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+                          style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
+                        >
+                          {s.employee.firstName[0]}{s.employee.lastName[0]}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-[#172B24]">{s.employee.firstName} {s.employee.lastName}</p>
+                          <p className="text-[10px] text-[#94A3B8] font-mono">{s.employee.employeeId}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-sm text-[#475569]">{MONTHS[s.month]} {s.year}</td>
+                    <td className="px-5 py-3.5 text-sm text-[#475569]">PKR {Number(s.basicSalary).toLocaleString()}</td>
+                    <td className="px-5 py-3.5 text-sm font-medium" style={{ color: "#07845A" }}>+PKR {Number(s.allowances).toLocaleString()}</td>
+                    <td className="px-5 py-3.5 text-sm font-medium text-red-500">−PKR {Number(s.otherDeductions).toLocaleString()}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-sm font-bold" style={{ color: "#07845A" }}>PKR {Number(s.netSalary).toLocaleString()}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                        style={s.isPaid
+                          ? { background: "#E3F6EB", color: "#07845A" }
+                          : { background: "#FEF3C7", color: "#F59E0B" }}>
+                        {s.isPaid ? "Paid" : "Pending"}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <Link href={`/salary-slips/${s.id}`}
+                        className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-all"
+                        style={{ background: "#EDE9FE", color: "#8B5CF6" }}>
+                        <ExternalLink size={11} /> View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

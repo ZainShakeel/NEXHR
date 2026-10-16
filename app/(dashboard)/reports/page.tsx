@@ -1,24 +1,24 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, TrendingUp, Users, CalendarCheck, BarChart2, Activity } from "lucide-react";
+import { Loader2, Users, UserCheck, TrendingUp, BarChart3, Download } from "lucide-react";
 import { useCompany } from "@/hooks/useCompany";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, CartesianGrid, Legend,
+} from "recharts";
 
 type Stats = {
   totalEmployees: number; presentToday: number; onLeave: number;
   pendingRequests: number; attendanceRate: number; lateToday?: number;
   departments: { name: string; _count: { employees: number } }[];
   recentAttendance: { status: string; employee: { firstName: string; lastName: string } }[];
+  attendanceTrend: { day: string; present: number; late: number; absent: number }[];
+  leaveDistribution: { name: string; value: number; color: string }[];
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  PRESENT: "#22c55e", LATE: "#F59E0B", ABSENT: "#EF4444", ON_LEAVE: "#3B82F6",
-};
-
-const CustomBar = (props: any) => {
-  const { x, y, width, height } = props;
-  return <rect x={x} y={y} width={width} height={height} rx={4} fill="url(#barGrad)" />;
+  PRESENT: "#07845A", LATE: "#F59E0B", ABSENT: "#EF4444", ON_LEAVE: "#3B82F6",
 };
 
 export default function ReportsPage() {
@@ -38,142 +38,165 @@ export default function ReportsPage() {
 
   if (authStatus === "loading" || loading) {
     return (
-      <div className="flex-1 flex items-center justify-center h-full" style={{ background: "#F0F4F2" }}>
-        <Loader2 size={24} className="animate-spin text-[#16A34A]" />
+      <div className="flex items-center justify-center h-full" style={{ background: "#F5F8F6" }}>
+        <Loader2 size={22} className="animate-spin" style={{ color: "#07845A" }} />
       </div>
     );
   }
 
-  const deptData = (stats?.departments ?? []).map(d => ({ name: d.name, employees: d._count.employees }));
+  const deptData = (stats?.departments ?? []).map(d => ({ name: d.name, Employees: d._count.employees }));
   const statusCounts = (stats?.recentAttendance ?? []).reduce((acc: Record<string, number>, r) => {
     acc[r.status] = (acc[r.status] ?? 0) + 1; return acc;
   }, {});
   const pieData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+  const trendData = (stats?.attendanceTrend ?? []).map(d => ({
+    day: d.day, Present: d.present, Late: d.late, Absent: d.absent,
+  }));
 
   const kpis = [
-    { label: "Total Employees",  value: stats?.totalEmployees ?? 0,   icon: Users,         gradient: "linear-gradient(135deg,#071A10,#16A34A)" },
-    { label: "Present Today",    value: stats?.presentToday ?? 0,      icon: CalendarCheck, gradient: "linear-gradient(135deg,#1e3a5f,#3B82F6)" },
-    { label: "On Leave",         value: stats?.onLeave ?? 0,           icon: TrendingUp,    gradient: "linear-gradient(135deg,#451a03,#d97706)" },
-    { label: "Attendance Rate",  value: `${stats?.attendanceRate ?? 0}%`, icon: BarChart2,  gradient: "linear-gradient(135deg,#2d1f5e,#7C3AED)" },
+    { label: "Total Employees",  value: stats?.totalEmployees ?? 0,       icon: Users,        color: "#07845A", bg: "#E3F6EB" },
+    { label: "Present Today",    value: stats?.presentToday ?? 0,          icon: UserCheck,    color: "#3B82F6", bg: "#DBEAFE" },
+    { label: "On Leave",         value: stats?.onLeave ?? 0,               icon: TrendingUp,   color: "#F59E0B", bg: "#FEF3C7" },
+    { label: "Attendance Rate",  value: `${stats?.attendanceRate ?? 0}%`,  icon: BarChart3,    color: "#8B5CF6", bg: "#EDE9FE" },
   ];
 
+  const ReportCard = ({ title, subtitle, children, exportable = false }: {
+    title: string; subtitle: string; children: React.ReactNode; exportable?: boolean;
+  }) => (
+    <div className="bg-white rounded-xl overflow-hidden" style={{ border: "1px solid #E2E8F0" }}>
+      <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #F1F5F9" }}>
+        <div>
+          <h2 className="text-sm font-bold text-[#172B24]">{title}</h2>
+          <p className="text-[11px] text-[#64748B] mt-0.5">{subtitle}</p>
+        </div>
+        {exportable && (
+          <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+            style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#475569" }}>
+            <Download size={12} /> Export
+          </button>
+        )}
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
+
   return (
-    <div className="flex flex-col h-full" style={{ background: "#F0F4F2" }}>
-      <div className="flex-shrink-0 px-5 pt-5 pb-4">
-        <h1 className="text-xl font-black text-[#0D1F15]">Reports & Analytics</h1>
-        <p className="text-sm text-[#6B8C7A] mt-0.5">Workforce metrics and attendance insights</p>
+    <div className="p-6 space-y-5" style={{ background: "#F5F8F6", minHeight: "100%" }}>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-[#172B24]">Reports & Analytics</h1>
+          <p className="text-sm text-[#64748B] mt-0.5">Workforce metrics and insights</p>
+        </div>
+        <button className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-colors"
+          style={{ background: "#fff", border: "1px solid #E2E8F0", color: "#475569" }}>
+          <Download size={14} /> Export All
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-4">
-
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-          {kpis.map((k, i) => (
-            <div key={k.label} className="rounded-2xl p-5 relative overflow-hidden"
-              style={{ background: k.gradient, boxShadow: "0 4px 16px rgba(0,0,0,0.18)", animationDelay: `${i * 60}ms`, animation: "fadeUp 0.4s ease both" }}>
-              <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: "rgba(255,255,255,0.14)" }}>
-                <k.icon size={17} className="text-white" />
-              </div>
-              <p className="text-2xl font-black text-white">{k.value}</p>
-              <p className="text-[11px] text-white/60 font-semibold mt-0.5">{k.label}</p>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map(k => (
+          <div key={k.label} className="bg-white rounded-xl p-4 flex items-center gap-3" style={{ border: "1px solid #E2E8F0" }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: k.bg }}>
+              <k.icon size={18} style={{ color: k.color }} />
             </div>
-          ))}
-        </div>
-
-        {/* Charts */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {/* Department bar chart */}
-          <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1px solid #E2ECE7" }}>
-            <div className="px-5 py-4" style={{ background: "linear-gradient(90deg,#071A10,#0A2A1A)" }}>
-              <h2 className="text-sm font-bold text-white">Employees by Department</h2>
-              <p className="text-[11px] text-white/40">Headcount distribution</p>
-            </div>
-            <div className="p-5">
-              {deptData.length === 0 ? (
-                <div className="h-48 flex items-center justify-center text-[#9BB8A8] text-xs">No department data</div>
-              ) : (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={deptData} margin={{ top: 4, right: 8, left: -16, bottom: 4 }}>
-                    <defs>
-                      <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#22c55e" />
-                        <stop offset="100%" stopColor="#16A34A" />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#9BB8A8" }} />
-                    <YAxis tick={{ fontSize: 10, fill: "#9BB8A8" }} allowDecimals={false} />
-                    <Tooltip contentStyle={{ fontSize: 11, borderRadius: 10, border: "1px solid #E2ECE7" }} />
-                    <Bar dataKey="employees" shape={<CustomBar />} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+            <div>
+              <p className="text-xl font-bold text-[#172B24]">{k.value}</p>
+              <p className="text-xs text-[#64748B]">{k.label}</p>
             </div>
           </div>
+        ))}
+      </div>
 
-          {/* Attendance pie chart */}
-          <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1px solid #E2ECE7" }}>
-            <div className="px-5 py-4" style={{ background: "linear-gradient(90deg,#1e3a5f,#1e40af)" }}>
-              <h2 className="text-sm font-bold text-white">Today's Attendance</h2>
-              <p className="text-[11px] text-white/40">Breakdown by status</p>
-            </div>
-            <div className="p-5">
-              {pieData.length === 0 ? (
-                <div className="h-48 flex items-center justify-center text-[#9BB8A8] text-xs">No attendance data for today</div>
-              ) : (
-                <>
-                  <ResponsiveContainer width="100%" height={170}>
-                    <PieChart>
-                      <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={72} innerRadius={36}>
-                        {pieData.map(entry => (
-                          <Cell key={entry.name} fill={STATUS_COLORS[entry.name] ?? "#9CA3AF"} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ fontSize: 11, borderRadius: 10 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="flex flex-wrap justify-center gap-3 mt-1">
-                    {pieData.map(entry => (
-                      <div key={entry.name} className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: STATUS_COLORS[entry.name] ?? "#9CA3AF" }} />
-                        <span className="text-[10px] text-[#6B8C7A] font-medium">{entry.name}: <strong className="text-[#0D1F15]">{entry.value}</strong></span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Attendance Log */}
-        <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1px solid #E2ECE7" }}>
-          <div className="px-5 py-4" style={{ background: "linear-gradient(90deg,#2d1f5e,#4c1d95)" }}>
-            <div className="flex items-center gap-2">
-              <Activity size={14} className="text-purple-300" />
-              <h2 className="text-sm font-bold text-white">Recent Attendance Log</h2>
-            </div>
-          </div>
-          {(stats?.recentAttendance ?? []).length === 0 ? (
-            <div className="py-12 flex items-center justify-center text-[#9BB8A8] text-xs">No attendance records yet</div>
+      {/* Charts row 1 */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <ReportCard title="7-Day Attendance Trend" subtitle="Daily attendance breakdown" exportable>
+          {trendData.length === 0 ? (
+            <div className="h-48 flex items-center justify-center text-sm text-[#94A3B8]">No data yet</div>
           ) : (
-            <div className="divide-y divide-[#EEF5F1]">
-              {stats!.recentAttendance.slice(0, 10).map((r, i) => {
-                const color =
-                  r.status === "PRESENT" ? "#16A34A" :
-                  r.status === "LATE"    ? "#D97706" :
-                  r.status === "ABSENT"  ? "#EF4444" : "#3B82F6";
+            <>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={trendData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barSize={10} barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E2E8F0" }} cursor={{ fill: "#F8FAFC" }} />
+                  <Bar dataKey="Present" fill="#07845A" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Late" fill="#F59E0B" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Absent" fill="#EF4444" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="flex gap-4 mt-2">
+                {[{ label: "Present", color: "#07845A" }, { label: "Late", color: "#F59E0B" }, { label: "Absent", color: "#EF4444" }].map(l => (
+                  <div key={l.label} className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: l.color }} />
+                    <span className="text-[11px] text-[#64748B]">{l.label}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </ReportCard>
+
+        <ReportCard title="Employees by Department" subtitle="Headcount distribution" exportable>
+          {deptData.length === 0 ? (
+            <div className="h-48 flex items-center justify-center text-sm text-[#94A3B8]">No departments yet</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={deptData} layout="vertical" margin={{ top: 4, right: 40, left: 0, bottom: 0 }}>
+                <XAxis type="number" tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "#475569" }} axisLine={false} tickLine={false} width={80} />
+                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #E2E8F0" }} cursor={{ fill: "#F8FAFC" }} />
+                <Bar dataKey="Employees" fill="#07845A" radius={[0, 3, 3, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </ReportCard>
+      </div>
+
+      {/* Charts row 2 */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <ReportCard title="Today's Attendance Breakdown" subtitle="Status distribution" exportable>
+          {pieData.length === 0 ? (
+            <div className="h-48 flex items-center justify-center text-sm text-[#94A3B8]">No attendance data for today</div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={180}>
+                <PieChart>
+                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={72} innerRadius={40}>
+                    {pieData.map((entry, i) => (
+                      <Cell key={entry.name} fill={STATUS_COLORS[entry.name] ?? "#94A3B8"} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-wrap justify-center gap-4 mt-2">
+                {pieData.map(entry => (
+                  <div key={entry.name} className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: STATUS_COLORS[entry.name] ?? "#94A3B8" }} />
+                    <span className="text-[11px] text-[#64748B]">
+                      {entry.name}: <strong className="text-[#172B24]">{entry.value}</strong>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </ReportCard>
+
+        <ReportCard title="Recent Attendance Log" subtitle="Latest activity">
+          {(stats?.recentAttendance ?? []).length === 0 ? (
+            <div className="h-48 flex items-center justify-center text-sm text-[#94A3B8]">No attendance records</div>
+          ) : (
+            <div className="space-y-2.5">
+              {stats!.recentAttendance.slice(0, 8).map((r, i) => {
+                const color = STATUS_COLORS[r.status] ?? "#64748B";
                 return (
-                  <div key={i} className="flex items-center justify-between px-5 py-3 hover:bg-[#F8FAF9] transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black"
-                        style={{ background: "linear-gradient(135deg,#2d1f5e,#7C3AED)" }}>
-                        {r.employee.firstName[0]}{r.employee.lastName[0]}
-                      </div>
-                      <span className="text-xs font-semibold text-[#0D1F15]">{r.employee.firstName} {r.employee.lastName}</span>
-                    </div>
-                    <span className="text-[10px] font-black px-2.5 py-1 rounded-full"
-                      style={{ background: `${color}18`, color }}>
+                  <div key={i} className="flex items-center justify-between py-1.5 border-b last:border-0" style={{ borderColor: "#F1F5F9" }}>
+                    <span className="text-sm text-[#475569]">{r.employee.firstName} {r.employee.lastName}</span>
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
+                      style={{ background: `${color}15`, color }}>
                       {r.status}
                     </span>
                   </div>
@@ -181,12 +204,8 @@ export default function ReportsPage() {
               })}
             </div>
           )}
-        </div>
+        </ReportCard>
       </div>
-
-      <style jsx global>{`
-        @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-      `}</style>
     </div>
   );
 }

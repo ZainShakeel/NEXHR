@@ -1,17 +1,43 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, CheckCircle2, XCircle, Clock, Loader2, Calendar } from "lucide-react";
+import {
+  Search, CheckCircle2, XCircle, Clock, Loader2, Calendar, Filter,
+} from "lucide-react";
 import { useCompany } from "@/hooks/useCompany";
 
 type LeaveReq = {
   id: string; days: number; reason: string; status: string;
   startDate: string; endDate: string; createdAt: string;
-  employee: { firstName: string; lastName: string; employeeId: string };
+  employee: { firstName: string; lastName: string; employeeId: string; designation: string; department?: { name: string } };
   leaveType: { name: string; color: string };
 };
 
-const FILTER_TABS = ["ALL", "PENDING", "APPROVED", "REJECTED"];
+const FILTER_TABS = [
+  { key: "ALL", label: "All Requests" },
+  { key: "PENDING", label: "Pending" },
+  { key: "APPROVED", label: "Approved" },
+  { key: "REJECTED", label: "Rejected" },
+];
+
+const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }> = {
+  PENDING:  { label: "Pending",  color: "#F59E0B", bg: "#FEF3C7" },
+  APPROVED: { label: "Approved", color: "#07845A", bg: "#E3F6EB" },
+  REJECTED: { label: "Rejected", color: "#EF4444", bg: "#FEE2E2" },
+  CANCELLED:{ label: "Cancelled",color: "#64748B", bg: "#F1F5F9" },
+};
+
+const AVATAR_COLORS = ["#07845A", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444", "#06B6D4"];
+
+function Avatar({ name, index }: { name: string; index: number }) {
+  const initials = name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
+  return (
+    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
+      style={{ background: AVATAR_COLORS[index % AVATAR_COLORS.length] }}>
+      {initials}
+    </div>
+  );
+}
 
 export default function LeavePage() {
   const { companyId, status: authStatus } = useCompany();
@@ -34,7 +60,11 @@ export default function LeavePage() {
 
   const handleAction = async (id: string, status: "APPROVED" | "REJECTED") => {
     setActing(id);
-    await fetch("/api/leave", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status }) });
+    await fetch("/api/leave", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    });
     await load();
     setActing(null);
   };
@@ -51,144 +81,156 @@ export default function LeavePage() {
 
   if (authStatus === "loading" || loading) {
     return (
-      <div className="flex-1 flex items-center justify-center h-full" style={{ background: "#F0F4F2" }}>
-        <Loader2 size={24} className="animate-spin text-[#16A34A]" />
+      <div className="flex items-center justify-center h-full" style={{ background: "#F5F8F6" }}>
+        <Loader2 size={22} className="animate-spin" style={{ color: "#07845A" }} />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#F0F4F2" }}>
-      <div className="flex-shrink-0 px-5 pt-5 pb-4">
-        <h1 className="text-xl font-black text-[#0D1F15]">Leave Management</h1>
-        <p className="text-sm text-[#6B8C7A] mt-0.5">Review and manage employee leave requests</p>
+    <div className="p-6 space-y-5" style={{ background: "#F5F8F6", minHeight: "100%" }}>
+      <div>
+        <h1 className="text-xl font-bold text-[#172B24]">Leave Management</h1>
+        <p className="text-sm text-[#64748B] mt-0.5">Review and manage employee leave requests</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-4">
-
-        {/* KPI Cards */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Pending Approval", value: pending,  icon: Clock,        gradient: "linear-gradient(135deg,#451a03,#d97706)" },
-            { label: "Approved",         value: approved, icon: CheckCircle2, gradient: "linear-gradient(135deg,#071A10,#16A34A)" },
-            { label: "Rejected",         value: rejected, icon: XCircle,      gradient: "linear-gradient(135deg,#3b0a0a,#DC2626)" },
-          ].map(k => (
-            <div key={k.label} className="rounded-2xl p-5 relative overflow-hidden" style={{ background: k.gradient, boxShadow: "0 4px 16px rgba(0,0,0,0.18)" }}>
-              <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.14)" }}>
-                  <k.icon size={18} className="text-white" />
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-white leading-none">{k.value}</p>
-                  <p className="text-[11px] text-white/60 font-semibold mt-0.5">{k.label}</p>
-                </div>
-              </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: "Pending Approval", value: pending,  icon: Clock,        color: "#F59E0B", bg: "#FEF3C7" },
+          { label: "Approved",         value: approved, icon: CheckCircle2, color: "#07845A", bg: "#E3F6EB" },
+          { label: "Rejected",         value: rejected, icon: XCircle,      color: "#EF4444", bg: "#FEE2E2" },
+        ].map(k => (
+          <div key={k.label} className="bg-white rounded-xl p-5 flex items-center gap-4" style={{ border: "1px solid #E2E8F0" }}>
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: k.bg }}>
+              <k.icon size={20} style={{ color: k.color }} />
             </div>
+            <div>
+              <p className="text-2xl font-bold text-[#172B24]">{k.value}</p>
+              <p className="text-sm text-[#64748B]">{k.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-xl p-4 flex flex-wrap gap-3 items-center" style={{ border: "1px solid #E2E8F0" }}>
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#94A3B8" }} />
+          <input type="text" placeholder="Search employee…" value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-lg focus:outline-none"
+            style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }} />
+        </div>
+        <div className="flex gap-1.5">
+          {FILTER_TABS.map(t => (
+            <button key={t.key} onClick={() => setFilter(t.key)}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all"
+              style={filter === t.key
+                ? { background: "#07845A", color: "#fff" }
+                : { background: "#F8FAFC", color: "#475569", border: "1px solid #E2E8F0" }}>
+              {t.label}
+              {t.key === "PENDING" && pending > 0 && (
+                <span className="ml-1.5 w-4 h-4 rounded-full text-[9px] font-bold inline-flex items-center justify-center"
+                  style={{ background: filter === "PENDING" ? "rgba(255,255,255,0.25)" : "#EF4444", color: "#fff" }}>
+                  {pending}
+                </span>
+              )}
+            </button>
           ))}
         </div>
+        <span className="ml-auto text-sm text-[#64748B]">{filtered.length} requests</span>
+      </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 bg-white rounded-2xl px-4 py-3" style={{ border: "1px solid #E2ECE7", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}>
-          <div className="relative flex-1 min-w-[200px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9BB8A8]" />
-            <input type="text" placeholder="Search employee…" value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm rounded-xl focus:outline-none"
-              style={{ background: "#F5F9F6", border: "1px solid #E2ECE7" }} />
+      {/* Leave Requests */}
+      <div className="bg-white rounded-xl overflow-hidden" style={{ border: "1px solid #E2E8F0" }}>
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Calendar size={32} className="text-[#CBD5E1] mb-3" />
+            <p className="text-sm font-semibold text-[#475569]">No leave requests found</p>
+            <p className="text-xs text-[#94A3B8] mt-1">
+              {requests.length === 0 ? "Leave requests from employees will appear here" : "Try a different filter"}
+            </p>
           </div>
-          <div className="flex gap-1.5">
-            {FILTER_TABS.map(f => (
-              <button key={f} onClick={() => setFilter(f)}
-                className="px-3 py-1.5 text-xs font-bold rounded-xl transition-all"
-                style={filter === f
-                  ? { background: "linear-gradient(135deg,#071A10,#16A34A)", color: "white" }
-                  : { background: "#F5F9F6", color: "#6B8C7A", border: "1px solid #E2ECE7" }}>
-                {f}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Leave requests list */}
-        <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1px solid #E2ECE7" }}>
-          <div className="px-5 py-3.5 flex items-center gap-3" style={{ background: "linear-gradient(90deg,#071A10,#0A2A1A)" }}>
-            <Calendar size={14} className="text-green-400" />
-            <span className="text-sm font-bold text-white">Leave Requests</span>
-            {pending > 0 && (
-              <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">{pending}</span>
-            )}
-          </div>
-
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Calendar size={28} className="text-[#C5D9CE] mb-3" />
-              <p className="text-sm font-bold text-[#0D1F15]">No leave requests found</p>
-              <p className="text-xs text-[#9BB8A8] mt-1">Try changing the filter or search</p>
+        ) : (
+          <>
+            <div className="px-5 py-3" style={{ borderBottom: "1px solid #F1F5F9", background: "#FAFAFA" }}>
+              <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 text-[11px] font-semibold uppercase tracking-wide text-[#94A3B8]">
+                <span>Employee</span>
+                <span>Leave Type</span>
+                <span>Duration</span>
+                <span>Status</span>
+                <span>Actions</span>
+              </div>
             </div>
-          ) : (
-            <div className="divide-y divide-[#EEF5F1]">
-              {filtered.map(r => {
-                const statusStyle =
-                  r.status === "APPROVED" ? { bg: "rgba(22,163,74,0.1)", color: "#16A34A" } :
-                  r.status === "REJECTED" ? { bg: "rgba(239,68,68,0.1)", color: "#EF4444" } :
-                  { bg: "rgba(245,158,11,0.1)", color: "#D97706" };
+            <div className="divide-y" style={{ borderColor: "#F8FAFC" }}>
+              {filtered.map((r, i) => {
+                const st = STATUS_STYLE[r.status] ?? { label: r.status, color: "#64748B", bg: "#F1F5F9" };
+                const daysText = `${r.days} day${r.days > 1 ? "s" : ""}`;
+                const dateRange = r.startDate === r.endDate
+                  ? new Date(r.startDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" })
+                  : `${new Date(r.startDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })} – ${new Date(r.endDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" })}`;
+
                 return (
-                  <div key={r.id} className="px-5 py-4 flex items-center gap-4 hover:bg-[#F8FAF9] transition-colors">
-                    {/* Avatar */}
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[11px] font-black flex-shrink-0"
-                      style={{ background: "linear-gradient(135deg,#071A10,#16A34A)" }}>
-                      {r.employee.firstName[0]}{r.employee.lastName[0]}
-                    </div>
-
-                    {/* Employee info */}
-                    <div className="w-36 flex-shrink-0">
-                      <p className="text-xs font-bold text-[#0D1F15] truncate">{r.employee.firstName} {r.employee.lastName}</p>
-                      <p className="text-[10px] text-[#9BB8A8]">{r.employee.employeeId}</p>
-                    </div>
-
-                    {/* Leave details */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full text-white"
-                          style={{ background: r.leaveType.color || "#16A34A" }}>
-                          {r.leaveType.name}
-                        </span>
-                        <span className="text-[10px] font-semibold text-[#9BB8A8]">{r.days} day{r.days > 1 ? "s" : ""}</span>
-                        <span className="text-[10px] text-[#9BB8A8]">
-                          {new Date(r.startDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })}
-                          {r.endDate !== r.startDate && ` – ${new Date(r.endDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })}`}
-                        </span>
+                  <div key={r.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 items-center px-5 py-4 hover:bg-[#FAFAFA] transition-colors">
+                    {/* Employee */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar name={`${r.employee.firstName} ${r.employee.lastName}`} index={i} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[#172B24] truncate">{r.employee.firstName} {r.employee.lastName}</p>
+                        <p className="text-[11px] text-[#94A3B8]">{r.employee.designation}</p>
+                        {r.reason && <p className="text-[10px] text-[#94A3B8] italic truncate">"{r.reason}"</p>}
                       </div>
-                      {r.reason && <p className="text-[10px] text-[#6B8C7A] italic truncate">"{r.reason}"</p>}
                     </div>
 
-                    {/* Status + Actions */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-[10px] font-black px-2.5 py-1 rounded-full"
-                        style={{ background: statusStyle.bg, color: statusStyle.color }}>
-                        {r.status}
+                    {/* Leave Type */}
+                    <div>
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full text-white"
+                        style={{ background: r.leaveType.color || "#07845A" }}>
+                        {r.leaveType.name}
                       </span>
-                      {r.status === "PENDING" && (
-                        <div className="flex gap-1.5">
+                    </div>
+
+                    {/* Duration */}
+                    <div>
+                      <p className="text-sm font-semibold text-[#172B24]">{daysText}</p>
+                      <p className="text-[10px] text-[#94A3B8]">{dateRange}</p>
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: st.bg, color: st.color }}>
+                        {st.label}
+                      </span>
+                    </div>
+
+                    {/* Actions */}
+                    <div>
+                      {r.status === "PENDING" ? (
+                        <div className="flex gap-2">
                           <button onClick={() => handleAction(r.id, "APPROVED")} disabled={acting === r.id}
-                            className="flex items-center gap-1 px-3 py-1.5 text-white text-[10px] font-bold rounded-xl disabled:opacity-50 transition-all hover:shadow"
-                            style={{ background: "linear-gradient(135deg,#16A34A,#22c55e)" }}>
-                            {acting === r.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />} Approve
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg text-white transition-all disabled:opacity-50 hover:opacity-90"
+                            style={{ background: "#07845A" }}>
+                            {acting === r.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={11} />}
+                            Approve
                           </button>
                           <button onClick={() => handleAction(r.id, "REJECTED")} disabled={acting === r.id}
-                            className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-xl disabled:opacity-50 transition-all hover:shadow"
-                            style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)" }}>
-                            <XCircle size={10} /> Reject
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all disabled:opacity-50"
+                            style={{ background: "#FEE2E2", color: "#EF4444", border: "1px solid #FECACA" }}>
+                            <XCircle size={11} /> Reject
                           </button>
                         </div>
+                      ) : (
+                        <span className="text-xs text-[#94A3B8]">
+                          {new Date(r.createdAt).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })}
+                        </span>
                       )}
                     </div>
                   </div>
                 );
               })}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

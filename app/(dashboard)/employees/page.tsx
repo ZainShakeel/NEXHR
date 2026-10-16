@@ -1,230 +1,293 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, Plus, Download, Building2, ChevronRight, Loader2, Users } from "lucide-react";
 import Link from "next/link";
+import {
+  Search, Plus, Users, UserCheck, UserX, Building2,
+  Filter, Loader2, ChevronRight, MoreHorizontal,
+  Download, Upload,
+} from "lucide-react";
 import { useCompany } from "@/hooks/useCompany";
 
 type Employee = {
   id: string; employeeId: string; firstName: string; lastName: string;
-  email: string; designation: string; status: string; joiningDate: string; basicSalary: number;
-  department?: { name: string };
+  email: string; designation: string; status: string; joiningDate: string;
+  department?: { name: string }; basicSalary?: number;
 };
 
-const AVATAR_GRADIENTS = [
-  "linear-gradient(135deg,#071A10,#16A34A)",
-  "linear-gradient(135deg,#1e3a5f,#3B82F6)",
-  "linear-gradient(135deg,#2d1f5e,#7C3AED)",
-  "linear-gradient(135deg,#451a03,#d97706)",
-  "linear-gradient(135deg,#1a1a2e,#0891B2)",
-  "linear-gradient(135deg,#3b0a0a,#DC2626)",
-];
+type Department = { id: string; name: string };
 
-const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
-  ACTIVE:     { bg: "rgba(22,163,74,0.12)",  color: "#16A34A" },
-  INACTIVE:   { bg: "rgba(107,114,128,0.12)", color: "#6B7280" },
-  ON_LEAVE:   { bg: "rgba(245,158,11,0.12)", color: "#D97706" },
-  TERMINATED: { bg: "rgba(239,68,68,0.12)",  color: "#EF4444" },
+const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }> = {
+  ACTIVE:     { label: "Active",     color: "#07845A", bg: "#E3F6EB" },
+  INACTIVE:   { label: "Inactive",  color: "#64748B", bg: "#F1F5F9" },
+  ON_LEAVE:   { label: "On Leave",  color: "#F59E0B", bg: "#FEF3C7" },
+  TERMINATED: { label: "Terminated", color: "#EF4444", bg: "#FEE2E2" },
 };
+
+const AVATAR_COLORS = ["#07845A", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444", "#06B6D4", "#F97316"];
+
+function Avatar({ name, index, size = 36 }: { name: string; index: number; size?: number }) {
+  const initials = name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
+  return (
+    <div
+      className="flex-shrink-0 rounded-full flex items-center justify-center text-white font-semibold"
+      style={{ width: size, height: size, background: AVATAR_COLORS[index % AVATAR_COLORS.length], fontSize: size * 0.3 }}
+    >
+      {initials}
+    </div>
+  );
+}
 
 export default function EmployeesPage() {
   const { companyId, status: authStatus } = useCompany();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [deptFilter, setDeptFilter] = useState("All");
-  const [selected, setSelected] = useState<string[]>([]);
+  const [deptFilter, setDeptFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 15;
 
   const load = useCallback(() => {
     if (!companyId) return;
     setLoading(true);
-    fetch(`/api/employees?companyId=${companyId}`)
-      .then(r => r.json())
-      .then(d => { setEmployees(Array.isArray(d) ? d : []); setLoading(false); })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch(`/api/employees?companyId=${companyId}`).then(r => r.json()),
+      fetch(`/api/departments?companyId=${companyId}`).then(r => r.json()),
+    ]).then(([emps, depts]) => {
+      setEmployees(Array.isArray(emps) ? emps : []);
+      setDepartments(Array.isArray(depts) ? depts : []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, [companyId]);
 
   useEffect(() => { load(); }, [load]);
 
-  const depts = ["All", ...Array.from(new Set(employees.map(e => e.department?.name).filter(Boolean) as string[]))];
   const filtered = employees.filter(e => {
     const q = search.toLowerCase();
-    const matchQ = `${e.firstName} ${e.lastName} ${e.email} ${e.employeeId}`.toLowerCase().includes(q);
-    return matchQ && (deptFilter === "All" || e.department?.name === deptFilter);
+    const matchSearch = `${e.firstName} ${e.lastName} ${e.employeeId} ${e.email}`.toLowerCase().includes(q);
+    const matchDept = !deptFilter || e.department?.name === deptFilter;
+    const matchStatus = !statusFilter || e.status === statusFilter;
+    return matchSearch && matchDept && matchStatus;
   });
 
-  const toggleAll = () => setSelected(selected.length === filtered.length ? [] : filtered.map(e => e.id));
-  const toggleOne = (id: string) => setSelected(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const totalPages = Math.ceil(filtered.length / PER_PAGE);
+
+  const active = employees.filter(e => e.status === "ACTIVE").length;
+  const onLeave = employees.filter(e => e.status === "ON_LEAVE").length;
+  const inactive = employees.filter(e => e.status !== "ACTIVE" && e.status !== "ON_LEAVE").length;
 
   if (authStatus === "loading" || loading) {
     return (
-      <div className="flex-1 flex items-center justify-center h-full" style={{ background: "#F0F4F2" }}>
-        <Loader2 size={24} className="animate-spin text-[#16A34A]" />
+      <div className="flex items-center justify-center h-full" style={{ background: "#F5F8F6" }}>
+        <Loader2 size={22} className="animate-spin" style={{ color: "#07845A" }} />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#F0F4F2" }}>
-      {/* Page Header */}
-      <div className="flex-shrink-0 px-5 pt-5 pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-black text-[#0D1F15]">Employees</h1>
-            <p className="text-sm text-[#6B8C7A] mt-0.5">{employees.length} total employees</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all hover:shadow"
-              style={{ background: "white", border: "1px solid #E2ECE7", color: "#0D1F15" }}>
-              <Download size={13} className="text-[#6B8C7A]" /> Export
-            </button>
-            <Link href="/employees/new"
-              className="flex items-center gap-1.5 px-4 py-2 text-white text-sm font-bold rounded-xl shadow-md hover:shadow-lg transition-all"
-              style={{ background: "linear-gradient(135deg,#16A34A,#22c55e)" }}>
-              <Plus size={14} /> Add Employee
-            </Link>
-          </div>
+    <div className="p-6 space-y-5" style={{ background: "#F5F8F6", minHeight: "100%" }}>
+
+      {/* Page header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-[#172B24]">Employees</h1>
+          <p className="text-sm text-[#64748B] mt-0.5">{employees.length} total employees</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors hover:bg-[#E2E8F0]"
+            style={{ background: "#fff", border: "1px solid #E2E8F0", color: "#475569" }}>
+            <Upload size={14} /> Import
+          </button>
+          <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors hover:bg-[#E2E8F0]"
+            style={{ background: "#fff", border: "1px solid #E2E8F0", color: "#475569" }}>
+            <Download size={14} /> Export
+          </button>
+          <Link
+            href="/employees/new"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg text-white transition-all hover:opacity-90"
+            style={{ background: "#07845A" }}
+          >
+            <Plus size={15} /> Add Employee
+          </Link>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-4">
-
-        {/* Stats row */}
-        <div className="grid grid-cols-4 gap-3">
-          {[
-            { label: "Total", value: employees.length, gradient: "linear-gradient(135deg,#071A10,#16A34A)" },
-            { label: "Active", value: employees.filter(e => e.status === "ACTIVE").length, gradient: "linear-gradient(135deg,#1e3a5f,#3B82F6)" },
-            { label: "On Leave", value: employees.filter(e => e.status === "ON_LEAVE").length, gradient: "linear-gradient(135deg,#451a03,#d97706)" },
-            { label: "Departments", value: depts.length - 1, gradient: "linear-gradient(135deg,#2d1f5e,#7C3AED)" },
-          ].map(k => (
-            <div key={k.label} className="rounded-2xl p-4 relative overflow-hidden" style={{ background: k.gradient, boxShadow: "0 4px 16px rgba(0,0,0,0.18)" }}>
-              <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
-              <p className="text-2xl font-black text-white">{k.value}</p>
-              <p className="text-[11px] text-white/60 font-semibold mt-0.5">{k.label}</p>
+      {/* Stat Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        {[
+          { label: "Total", value: employees.length, icon: Users, color: "#07845A", bg: "#E3F6EB" },
+          { label: "Active", value: active, icon: UserCheck, color: "#3B82F6", bg: "#DBEAFE" },
+          { label: "On Leave", value: onLeave, icon: Building2, color: "#F59E0B", bg: "#FEF3C7" },
+          { label: "Inactive / Terminated", value: inactive, icon: UserX, color: "#EF4444", bg: "#FEE2E2" },
+        ].map(c => (
+          <div key={c.label} className="bg-white rounded-xl p-4 flex items-center gap-3" style={{ border: "1px solid #E2E8F0" }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: c.bg }}>
+              <c.icon size={18} style={{ color: c.color }} />
             </div>
-          ))}
+            <div>
+              <p className="text-xl font-bold text-[#172B24]">{c.value}</p>
+              <p className="text-xs text-[#64748B]">{c.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-xl p-4 flex flex-wrap gap-3 items-center" style={{ border: "1px solid #E2E8F0" }}>
+        <div className="relative flex-1 min-w-[220px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#94A3B8" }} />
+          <input
+            type="text" placeholder="Search by name, ID, email…"
+            value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-lg focus:outline-none transition-all"
+            style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}
+          />
         </div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 bg-white rounded-2xl px-4 py-3" style={{ border: "1px solid #E2ECE7", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}>
-          <div className="relative flex-1 min-w-[200px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9BB8A8]" />
-            <input type="text" placeholder="Search by name, email or ID…" value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm rounded-xl focus:outline-none transition-all"
-              style={{ background: "#F5F9F6", border: "1px solid #E2ECE7" }} />
-          </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {depts.map(d => (
-              <button key={d} onClick={() => setDeptFilter(d)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
-                style={deptFilter === d
-                  ? { background: "linear-gradient(135deg,#071A10,#16A34A)", color: "white" }
-                  : { background: "#F5F9F6", color: "#6B8C7A", border: "1px solid #E2ECE7" }}>
-                {d}
-              </button>
-            ))}
-          </div>
-          {selected.length > 0 && (
-            <span className="text-xs font-bold text-green-600 ml-auto">{selected.length} selected</span>
-          )}
+        <div className="flex items-center gap-2">
+          <Filter size={14} style={{ color: "#94A3B8" }} />
+          <select
+            value={deptFilter} onChange={e => { setDeptFilter(e.target.value); setPage(1); }}
+            className="px-3 py-2 text-sm rounded-lg focus:outline-none"
+            style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#475569" }}
+          >
+            <option value="">All Departments</option>
+            {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+          </select>
+          <select
+            value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+            className="px-3 py-2 text-sm rounded-lg focus:outline-none"
+            style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#475569" }}
+          >
+            <option value="">All Status</option>
+            {Object.entries(STATUS_STYLE).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </select>
         </div>
+        {(search || deptFilter || statusFilter) && (
+          <button
+            onClick={() => { setSearch(""); setDeptFilter(""); setStatusFilter(""); setPage(1); }}
+            className="px-3 py-2 text-xs font-medium rounded-lg transition-colors"
+            style={{ background: "#FEE2E2", color: "#EF4444" }}
+          >
+            Clear filters
+          </button>
+        )}
+        <span className="ml-auto text-sm text-[#64748B]">{filtered.length} results</span>
+      </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1px solid #E2ECE7" }}>
-          {/* Table header — dark */}
-          <div className="px-5 py-3 flex items-center gap-3" style={{ background: "linear-gradient(90deg,#071A10,#0A2A1A)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-            <input type="checkbox" checked={selected.length === filtered.length && filtered.length > 0}
-              onChange={toggleAll} className="w-4 h-4 rounded accent-green-500" />
-            <div className="flex items-center gap-2">
-              <Users size={13} className="text-green-400" />
-              <span className="text-sm font-bold text-white">All Employees</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(34,197,94,0.2)", color: "#22c55e" }}>
-                {filtered.length}
-              </span>
-            </div>
-            <Link href="/employees/new" className="ml-auto text-[10px] font-bold text-green-400 hover:text-green-300 flex items-center gap-1">
-              Add New <ChevronRight size={10} />
-            </Link>
+      {/* Table */}
+      <div className="bg-white rounded-xl overflow-hidden" style={{ border: "1px solid #E2E8F0" }}>
+        {paginated.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Users size={32} className="text-[#CBD5E1] mb-3" />
+            <p className="text-sm font-semibold text-[#475569]">No employees found</p>
+            <p className="text-xs text-[#94A3B8] mt-1">
+              {employees.length === 0 ? "Add your first employee to get started" : "Try adjusting your filters"}
+            </p>
+            {employees.length === 0 && (
+              <Link href="/employees/new"
+                className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg text-white"
+                style={{ background: "#07845A" }}>
+                <Plus size={14} /> Add Employee
+              </Link>
+            )}
           </div>
-
-          {employees.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: "rgba(22,163,74,0.08)" }}>
-                <Building2 size={24} className="text-[#16A34A]" />
-              </div>
-              <p className="text-sm font-bold text-[#0D1F15]">No employees yet</p>
-              <p className="text-xs text-[#9BB8A8] mt-1 mb-4">Add your first employee to get started</p>
-              <Link href="/employees/new" className="px-4 py-2 text-white text-sm font-bold rounded-xl"
-                style={{ background: "linear-gradient(135deg,#16A34A,#22c55e)" }}>Add Employee</Link>
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr style={{ background: "#F8FAF9", borderBottom: "1px solid #EEF5F1" }}>
-                      <th className="pl-5 pr-3 py-3 w-8" />
-                      {["Employee", "ID", "Department", "Designation", "Joining Date", "Status", ""].map(h => (
-                        <th key={h} className="text-left px-3 py-3 text-[10px] font-bold text-[#6B8C7A] uppercase tracking-wider">{h}</th>
-                      ))}
+        ) : (
+          <>
+            <table className="w-full">
+              <thead>
+                <tr style={{ borderBottom: "1px solid #F1F5F9", background: "#FAFAFA" }}>
+                  {["Employee", "Employee ID", "Department", "Designation", "Join Date", "Status", ""].map(h => (
+                    <th key={h} className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[#94A3B8]">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y" style={{ borderColor: "#F8FAFC" }}>
+                {paginated.map((e, i) => {
+                  const st = STATUS_STYLE[e.status] ?? { label: e.status, color: "#64748B", bg: "#F1F5F9" };
+                  const globalIndex = (page - 1) * PER_PAGE + i;
+                  return (
+                    <tr key={e.id} className="hover:bg-[#FAFAFA] transition-colors group">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={`${e.firstName} ${e.lastName}`} index={globalIndex} size={34} />
+                          <div>
+                            <p className="text-sm font-semibold text-[#172B24]">{e.firstName} {e.lastName}</p>
+                            <p className="text-[11px] text-[#94A3B8]">{e.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-xs font-mono font-medium text-[#475569] px-2 py-1 rounded" style={{ background: "#F8FAFC" }}>
+                          {e.employeeId}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-sm text-[#475569]">{e.department?.name ?? "—"}</td>
+                      <td className="px-5 py-3.5 text-sm text-[#475569]">{e.designation}</td>
+                      <td className="px-5 py-3.5 text-sm text-[#475569]">
+                        {e.joiningDate ? new Date(e.joiningDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: st.bg, color: st.color }}>
+                          {st.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Link
+                            href={`/employees/${e.id}`}
+                            className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors"
+                            style={{ background: "#E3F6EB", color: "#07845A" }}
+                          >
+                            View <ChevronRight size={11} />
+                          </Link>
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((emp, i) => {
-                      const st = STATUS_STYLE[emp.status] ?? { bg: "rgba(107,114,128,0.1)", color: "#6B7280" };
-                      return (
-                        <tr key={emp.id} className="border-b last:border-0 hover:bg-[#F8FAF9] transition-colors group" style={{ borderColor: "#EEF5F1" }}>
-                          <td className="pl-5 pr-3 py-3.5">
-                            <input type="checkbox" checked={selected.includes(emp.id)} onChange={() => toggleOne(emp.id)}
-                              className="w-4 h-4 rounded accent-green-500" />
-                          </td>
-                          <td className="px-3 py-3.5">
-                            <Link href={`/employees/${emp.id}`} className="flex items-center gap-3 group/link">
-                              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[11px] font-black flex-shrink-0"
-                                style={{ background: AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length] }}>
-                                {emp.firstName[0]}{emp.lastName[0]}
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold text-[#0D1F15] group-hover/link:text-[#16A34A] transition-colors">{emp.firstName} {emp.lastName}</p>
-                                <p className="text-[10px] text-[#9BB8A8]">{emp.email}</p>
-                              </div>
-                            </Link>
-                          </td>
-                          <td className="px-3 py-3.5">
-                            <span className="font-mono text-xs font-semibold text-[#6B8C7A]">{emp.employeeId}</span>
-                          </td>
-                          <td className="px-3 py-3.5 text-xs text-[#4A5E55]">{emp.department?.name ?? "—"}</td>
-                          <td className="px-3 py-3.5 text-xs text-[#4A5E55]">{emp.designation}</td>
-                          <td className="px-3 py-3.5 text-xs text-[#6B8C7A]">
-                            {new Date(emp.joiningDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" })}
-                          </td>
-                          <td className="px-3 py-3.5">
-                            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-                              style={{ background: st.bg, color: st.color }}>
-                              {emp.status.replace("_", " ")}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3.5">
-                            <Link href={`/employees/${emp.id}`}
-                              className="opacity-0 group-hover:opacity-100 text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all"
-                              style={{ background: "rgba(22,163,74,0.1)", color: "#16A34A" }}>
-                              View
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex items-center justify-between px-5 py-3" style={{ background: "#F8FAF9", borderTop: "1px solid #EEF5F1" }}>
-                <p className="text-xs text-[#9BB8A8]">
-                  Showing <span className="font-bold text-[#0D1F15]">{filtered.length}</span> of <span className="font-bold text-[#0D1F15]">{employees.length}</span> employees
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: "1px solid #F1F5F9" }}>
+                <p className="text-xs text-[#64748B]">
+                  Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length}
                 </p>
+                <div className="flex gap-1">
+                  <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-40"
+                    style={{ border: "1px solid #E2E8F0", color: "#475569" }}>
+                    Previous
+                  </button>
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    const pg = i + Math.max(1, page - 2);
+                    if (pg > totalPages) return null;
+                    return (
+                      <button key={pg} onClick={() => setPage(pg)}
+                        className="w-8 h-8 text-xs font-medium rounded-lg transition-colors"
+                        style={pg === page
+                          ? { background: "#07845A", color: "#fff" }
+                          : { border: "1px solid #E2E8F0", color: "#475569" }}>
+                        {pg}
+                      </button>
+                    );
+                  })}
+                  <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-40"
+                    style={{ border: "1px solid #E2E8F0", color: "#475569" }}>
+                    Next
+                  </button>
+                </div>
               </div>
-            </>
-          )}
-        </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
