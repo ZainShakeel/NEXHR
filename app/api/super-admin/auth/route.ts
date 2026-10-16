@@ -1,7 +1,6 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const { email, password } = await req.json();
 
   const adminEmail = process.env.SUPER_ADMIN_EMAIL;
@@ -15,8 +14,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
   }
 
-  const cookieStore = await cookies();
-  cookieStore.set("super_admin_session", "authenticated", {
+  const res = NextResponse.json({ success: true });
+  res.cookies.set("super_admin_session", "authenticated", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -24,11 +23,17 @@ export async function POST(req: Request) {
     path: "/",
   });
 
-  return NextResponse.json({ success: true });
+  return res;
 }
 
 export async function DELETE() {
-  const cookieStore = await cookies();
-  cookieStore.delete("super_admin_session");
-  return NextResponse.json({ success: true });
+  const res = NextResponse.json({ success: true });
+  res.cookies.set("super_admin_session", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 0,
+    path: "/",
+  });
+  return res;
 }
