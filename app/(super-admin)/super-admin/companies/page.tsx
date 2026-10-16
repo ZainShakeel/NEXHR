@@ -396,7 +396,7 @@ export default function SuperAdminCompaniesPage() {
                 </div>
               </div>
               <div className="bg-[#F5F8F6] border border-[#E2E8F0] rounded-xl p-3">
-                <p className="text-xs text-[#64748B]">Admin email: <span className="font-semibold text-[#172B24]">{editTarget.users[0]?.email ?? """"}</span></p>
+                <p className="text-xs text-[#64748B]">Admin email: <span className="font-semibold text-[#172B24]">{editTarget.users[0]?.email ?? 'N/A'}</span></p>
               </div>
             </div>
             <div className="px-6 py-5 border-t border-[#F1F5F9] flex gap-3 bg-[#F8FAFC]">

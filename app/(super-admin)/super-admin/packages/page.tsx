@@ -73,7 +73,7 @@ export default function PackagesPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-[#172B24]">{plan.name}</h3>
-                  <p className="text-[10px] text-[#94A3B8]">Up to {plan.maxEmployees === 99999 ? "âˆž" : plan.maxEmployees} employees</p>
+                  <p className="text-[10px] text-[#94A3B8]">Up to {plan.maxEmployees === 99999 ? "???" : plan.maxEmployees} employees</p>
                 </div>
               </div>
               <p className="text-[11px] text-[#64748B] mb-4">{plan.description}</p>
@@ -96,7 +96,7 @@ export default function PackagesPage() {
                 ))}
                 {plan.notIncluded.map(f => (
                   <div key={f} className="flex items-start gap-2 text-xs text-[#94A3B8]">
-                    <span className="w-3 flex-shrink-0 text-center mt-0.5">âœ•</span>
+                    <span className="w-3 flex-shrink-0 text-center mt-0.5 text-[#CBD5E1]">x</span>
                     <span>{f}</span>
                   </div>
                 ))}
@@ -124,18 +124,18 @@ export default function PackagesPage() {
             <tbody className="divide-y divide-[#F5F8F6]">
               {[
                 ["Max Employees", "5", "25", "100", "Unlimited"],
-                ["Attendance Tracking", "âœ“", "âœ“", "âœ“", "âœ“"],
-                ["GPS Geofencing", "âœ•", "âœ“", "âœ“", "âœ“"],
-                ["Leave Management", "âœ“", "âœ“", "âœ“", "âœ“"],
-                ["Payroll Generation", "âœ•", "âœ“", "âœ“", "âœ“"],
-                ["Advanced Reports", "âœ•", "âœ•", "âœ“", "âœ“"],
-                ["Custom Integrations", "âœ•", "âœ•", "âœ•", "âœ“"],
-                ["Dedicated Support", "âœ•", "âœ•", "âœ•", "âœ“"],
+                ["Attendance Tracking", "Yes", "Yes", "Yes", "Yes"],
+                ["GPS Geofencing", "No", "Yes", "Yes", "Yes"],
+                ["Leave Management", "Yes", "Yes", "Yes", "Yes"],
+                ["Payroll Generation", "No", "Yes", "Yes", "Yes"],
+                ["Advanced Reports", "No", "No", "Yes", "Yes"],
+                ["Custom Integrations", "No", "No", "No", "Yes"],
+                ["Dedicated Support", "No", "No", "No", "Yes"],
               ].map(([feature, ...vals]) => (
                 <tr key={feature}>
                   <td className="py-2 pr-4 text-[#64748B]">{feature}</td>
                   {vals.map((v, i) => (
-                    <td key={i} className={`text-center py-2 px-2 font-semibold ${v === "âœ“" ? "text-[#07845A]" : v === "âœ•" ? "text-[#E2E8F0]" : "text-[#172B24]"}`}>{v}</td>
+                    <td key={i} className={`text-center py-2 px-2 font-semibold ${v === "Yes" ? "text-[#07845A]" : v === "No" ? "text-[#CBD5E1]" : "text-[#172B24]"}`}>{v}</td>
                   ))}
                 </tr>
               ))}
