@@ -1,0 +1,6 @@
+{
+  "env": {
+    "SUPER_ADMIN_EMAIL": "superadmin@nexhr.com",
+    "SUPER_ADMIN_PASSWORD": "NexHR@SuperAdmin2026"
+  }
+}

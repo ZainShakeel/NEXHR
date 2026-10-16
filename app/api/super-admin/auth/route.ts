@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL ?? "superadmin@nexhr.com";
+const ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD ?? "NexHR@SuperAdmin2026";
+
 export async function POST(req: NextRequest) {
   const { email, password } = await req.json();
 
-  const adminEmail = process.env.SUPER_ADMIN_EMAIL;
-  const adminPassword = process.env.SUPER_ADMIN_PASSWORD;
-
-  if (!adminEmail || !adminPassword) {
-    return NextResponse.json({ error: "Super admin not configured." }, { status: 500 });
-  }
-
-  if (email !== adminEmail || password !== adminPassword) {
+  if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
     return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
   }
 
@@ -19,7 +15,7 @@ export async function POST(req: NextRequest) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 8, // 8 hours
+    maxAge: 60 * 60 * 8,
     path: "/",
   });
 
