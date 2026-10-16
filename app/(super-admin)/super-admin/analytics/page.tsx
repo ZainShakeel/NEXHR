@@ -158,7 +158,7 @@ export default function SuperAdminAnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#F0F4F2" />
                 <XAxis dataKey="month" tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid #E2E8F0", borderRadius: 10, fontSize: 11, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }} labelStyle={{ color: "#172B24", fontWeight: 600 }} formatter={(v: number | string) => [`PKR ${Number(v).toLocaleString()}`, "Revenue"]} />
+                <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid #E2E8F0", borderRadius: 10, fontSize: 11, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }} labelStyle={{ color: "#172B24", fontWeight: 600 }} formatter={(v: any) => [`PKR ${Number(v).toLocaleString()}`, "Revenue"]} />
                 <Line type="monotone" dataKey="amount" stroke="#3B82F6" strokeWidth={2.5} dot={{ fill: "#3B82F6", r: 3.5 }} />
               </LineChart>
             </ResponsiveContainer>
