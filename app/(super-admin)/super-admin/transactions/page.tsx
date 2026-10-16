@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, TrendingUp, DollarSign, Calendar, Search } from "lucide-react";
+import { Loader2, TrendingUp, DollarSign, Calendar, Search, Download } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 type Sub = {
   id: string; plan: string; amount: number; currency: string;
@@ -46,13 +47,50 @@ export default function TransactionsPage() {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const mrr = subs.filter(s => s.status === "ACTIVE" && new Date(s.startDate) >= startOfMonth).reduce((sum, s) => sum + s.amount, 0);
 
+  // Build monthly revenue chart data
+  const monthMap: Record<string, number> = {};
+  subs.filter(s => ["ACTIVE","EXPIRED"].includes(s.status)).forEach(s => {
+    const key = new Date(s.startDate).toLocaleDateString("en-US", { month: "short" });
+    monthMap[key] = (monthMap[key] ?? 0) + s.amount;
+  });
+  const revenueChart = Object.entries(monthMap).slice(-6).map(([month, amount]) => ({ month, amount }));
+
+  const exportCSV = () => {
+    const rows = [
+      ["#", "Company", "Domain", "Plan", "Amount (PKR)", "Start Date", "End Date", "Status", "Created"],
+      ...filtered.map((s, i) => [
+        String(i + 1),
+        s.company.name,
+        s.company.domain,
+        s.plan,
+        String(s.amount),
+        new Date(s.startDate).toLocaleDateString("en-PK"),
+        new Date(s.endDate).toLocaleDateString("en-PK"),
+        s.status,
+        new Date(s.createdAt).toLocaleDateString("en-PK"),
+      ]),
+    ];
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `nexhr-transactions-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  };
+
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 size={24} className="animate-spin text-[#07845A]" /></div>;
 
   return (
     <div className="p-6 min-h-full bg-[#F5F8F6]">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-[#172B24]">Purchase Transactions</h1>
-        <p className="text-[#64748B] text-sm mt-0.5">All subscription payments and revenue</p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-[#172B24]">Purchase Transactions</h1>
+          <p className="text-[#64748B] text-sm mt-0.5">All subscription payments and revenue</p>
+        </div>
+        <button onClick={exportCSV}
+          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#E2E8F0] text-sm font-semibold text-[#172B24] rounded-xl hover:bg-[#F5F8F6] shadow-sm transition-colors">
+          <Download size={14} /> Export CSV
+        </button>
       </div>
 
       {/* Revenue KPIs */}
@@ -72,11 +110,28 @@ export default function TransactionsPage() {
         ))}
       </div>
 
+      {/* Revenue Chart */}
+      {revenueChart.length > 0 && (
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-sm mb-6">
+          <h2 className="text-sm font-bold text-[#172B24] mb-1">Revenue Trend</h2>
+          <p className="text-[11px] text-[#64748B] mb-4">Monthly subscription revenue (PKR)</p>
+          <ResponsiveContainer width="100%" height={160}>
+            <BarChart data={revenueChart} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F0F4F2" />
+              <XAxis dataKey="month" tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid #E2E8F0", borderRadius: 10, fontSize: 11 }} formatter={(v: number) => [`PKR ${v.toLocaleString()}`, "Revenue"]} />
+              <Bar dataKey="amount" fill="#07845A" radius={[5, 5, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="flex gap-3 mb-4">
         <div className="relative flex-1 max-w-sm">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B]" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by companyâ€¦"
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by company…"
             className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-[#E2E8F0] rounded-xl focus:outline-none focus:border-[#07845A] shadow-sm" />
         </div>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
@@ -110,7 +165,7 @@ export default function TransactionsPage() {
                   </td>
                   <td className="px-5 py-4 text-sm font-bold text-[#172B24]">PKR {s.amount.toLocaleString()}</td>
                   <td className="px-5 py-4 text-xs text-[#64748B]">
-                    {new Date(s.startDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })} â€“{" "}
+                    {new Date(s.startDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short" })} –{" "}
                     {new Date(s.endDate).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" })}
                   </td>
                   <td className="px-5 py-4">
@@ -128,4 +183,3 @@ export default function TransactionsPage() {
     </div>
   );
 }
-

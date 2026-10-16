@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
       prisma.company.findMany({
         include: {
           _count: { select: { employees: true } },
+          users: { where: { role: "COMPANY_OWNER" }, select: { email: true }, take: 1 },
         },
         orderBy: { createdAt: "desc" },
       }),

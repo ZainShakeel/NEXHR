@@ -26,14 +26,28 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const { name, domain, newAdminPassword } = await req.json();
+    const { name, domain, newAdminPassword, plan } = await req.json();
+
+    // Plan-only update (from inline dropdown)
+    if (plan && !name && !domain) {
+      const PLAN_LIMITS: Record<string, number> = { FREE: 5, STARTER: 25, BUSINESS: 100, ENTERPRISE: 99999 };
+      await prisma.company.update({ where: { id }, data: { plan, maxEmployees: PLAN_LIMITS[plan] ?? 5 } });
+      return NextResponse.json({ success: true });
+    }
+
     if (!name || !domain) return NextResponse.json({ error: "name and domain required" }, { status: 400 });
 
     // Check domain not taken by another company
     const existing = await prisma.company.findFirst({ where: { domain, NOT: { id } } });
     if (existing) return NextResponse.json({ error: "Domain already taken by another company" }, { status: 409 });
 
-    await prisma.company.update({ where: { id }, data: { name, domain } });
+    const updateData: Record<string, unknown> = { name, domain };
+    if (plan) {
+      const PLAN_LIMITS: Record<string, number> = { FREE: 5, STARTER: 25, BUSINESS: 100, ENTERPRISE: 99999 };
+      updateData.plan = plan;
+      updateData.maxEmployees = PLAN_LIMITS[plan] ?? 5;
+    }
+    await prisma.company.update({ where: { id }, data: updateData });
 
     // Reset admin password if provided
     if (newAdminPassword) {
