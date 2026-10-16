@@ -146,14 +146,23 @@ export default function SuperAdminDashboard() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    fetch("/api/super-admin/stats").then(r => r.json()).then(d => {
+    fetch("/api/super-admin/stats").then(async r => {
+      if (!r.ok) {
+        if (r.status === 401) {
+          window.location.href = "/super-admin/login";
+          return;
+        }
+        setLoading(false);
+        return;
+      }
+      const d = await r.json();
       setStats(d);
       setLoading(false);
       setTimeout(() => setMounted(true), 50);
-    });
+    }).catch(() => setLoading(false));
   }, []);
 
-  if (loading || !stats) {
+  if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4">
         <div className="relative">
@@ -165,6 +174,14 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
         <p className="text-sm text-[#6B8C7A] font-medium">Loading dashboard…</p>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3">
+        <p className="text-sm text-[#6B8C7A] font-medium">Could not load dashboard data.</p>
       </div>
     );
   }

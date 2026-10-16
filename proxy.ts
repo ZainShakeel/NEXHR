@@ -7,6 +7,14 @@ export default withAuth(
     const token = req.nextauth.token;
     const role = (token as any)?.role;
 
+    // Super admin routes: check cookie-based session
+    if (pathname.startsWith("/super-admin/") && pathname !== "/super-admin/login") {
+      const session = req.cookies.get("super_admin_session");
+      if (!session?.value) {
+        return NextResponse.redirect(new URL("/super-admin/login", req.url));
+      }
+    }
+
     // Employee routes: only EMPLOYEE role allowed
     if (pathname.startsWith("/employee/") && pathname !== "/employee/login") {
       if (!token) {
@@ -37,5 +45,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/employee/:path*", "/dashboard/:path*"],
+  matcher: ["/super-admin/:path*", "/employee/:path*", "/dashboard/:path*"],
 };
