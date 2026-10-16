@@ -57,18 +57,21 @@ function daysLeft(date?: string) {
 export default function SuperAdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [errMsg, setErrMsg] = useState("");
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true); setErrMsg("");
     fetch("/api/super-admin/stats").then(async r => {
+      const d = await r.json();
       if (!r.ok) {
         if (r.status === 401) { window.location.href = "/super-admin/login"; return; }
-        setError(true); setLoading(false); return;
+        setErrMsg(d.detail || d.error || "Server error"); setLoading(false); return;
       }
-      const d = await r.json();
       setStats(d); setLoading(false);
-    }).catch(() => { setError(true); setLoading(false); });
-  }, []);
+    }).catch((e) => { setErrMsg(e.message || "Network error"); setLoading(false); });
+  };
+
+  useEffect(() => { load(); }, []);
 
   if (loading) {
     return (
@@ -78,12 +81,12 @@ export default function SuperAdminDashboard() {
     );
   }
 
-  if (error || !stats) {
+  if (!loading && !stats) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-2" style={{ background: "#F5F8F6" }}>
         <p className="text-sm font-semibold text-[#475569]">Could not load dashboard data.</p>
-        <button onClick={() => window.location.reload()}
-          className="text-sm font-medium" style={{ color: "#07845A" }}>
+        {errMsg && <p className="text-xs text-red-500 max-w-sm text-center">{errMsg}</p>}
+        <button onClick={load} className="text-sm font-medium mt-1" style={{ color: "#07845A" }}>
           Retry
         </button>
       </div>

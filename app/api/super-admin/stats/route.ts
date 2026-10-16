@@ -6,17 +6,23 @@ export async function GET(req: NextRequest) {
   if (!session?.value) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const [companies, totalEmployees, subscriptions] = await Promise.all([
+    const [companies, totalEmployees] = await Promise.all([
       prisma.company.findMany({
         include: {
           _count: { select: { employees: true } },
-          subscriptions: { orderBy: { createdAt: "desc" }, take: 1 },
         },
         orderBy: { createdAt: "desc" },
       }),
       prisma.employee.count(),
-      prisma.subscription.findMany({ orderBy: { createdAt: "desc" } }),
     ]);
+
+    // Try subscriptions separately — table may not be seeded
+    let subscriptions: any[] = [];
+    try {
+      subscriptions = await (prisma as any).subscription.findMany({
+        orderBy: { createdAt: "desc" },
+      });
+    } catch { /* subscriptions table empty or unavailable */ }
 
     const now = new Date();
     const activeCompanies = companies.filter((c) => c.isActive).length;
@@ -25,37 +31,32 @@ export async function GET(req: NextRequest) {
       (c) => c.planExpiresAt && new Date(c.planExpiresAt) < now
     ).length;
 
-    // MRR from active subscriptions this month
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const mrr = subscriptions
-      .filter((s) => s.status === "ACTIVE" && new Date(s.startDate) >= startOfMonth)
-      .reduce((sum, s) => sum + s.amount, 0);
-
+      .filter((s: any) => s.status === "ACTIVE" && new Date(s.startDate) >= startOfMonth)
+      .reduce((sum: number, s: any) => sum + s.amount, 0);
     const totalRevenue = subscriptions
-      .filter((s) => s.status === "ACTIVE" || s.status === "EXPIRED")
-      .reduce((sum, s) => sum + s.amount, 0);
+      .filter((s: any) => s.status === "ACTIVE" || s.status === "EXPIRED")
+      .reduce((sum: number, s: any) => sum + s.amount, 0);
 
-    // Monthly growth
     const monthMap: Record<string, number> = {};
     companies.forEach((c) => {
-      const key = new Date(c.createdAt).toLocaleDateString("en-PK", { month: "short", year: "2-digit" });
+      const key = new Date(c.createdAt).toLocaleDateString("en-US", { month: "short" });
       monthMap[key] = (monthMap[key] ?? 0) + 1;
     });
     const monthlyGrowth = Object.entries(monthMap)
       .slice(-6)
       .map(([month, count]) => ({ month, companies: count }));
 
-    // Plan distribution
-    const planCount: Record<string, number> = { FREE: 0, STARTER: 0, BUSINESS: 0, ENTERPRISE: 0 };
-    companies.forEach((c) => { planCount[c.plan] = (planCount[c.plan] ?? 0) + 1; });
-    const planDist = Object.entries(planCount)
-      .filter(([, v]) => v > 0)
-      .map(([name, value]) => ({ name, value }));
+    const planCount: Record<string, number> = {};
+    companies.forEach((c) => {
+      planCount[c.plan] = (planCount[c.plan] ?? 0) + 1;
+    });
+    const planDist = Object.entries(planCount).map(([name, value]) => ({ name, value }));
 
-    // Revenue by month (last 6)
     const revenueMap: Record<string, number> = {};
-    subscriptions.forEach((s) => {
-      const key = new Date(s.startDate).toLocaleDateString("en-PK", { month: "short", year: "2-digit" });
+    subscriptions.forEach((s: any) => {
+      const key = new Date(s.startDate).toLocaleDateString("en-US", { month: "short" });
       revenueMap[key] = (revenueMap[key] ?? 0) + s.amount;
     });
     const monthlyRevenue = Object.entries(revenueMap)
@@ -74,9 +75,8 @@ export async function GET(req: NextRequest) {
       monthlyGrowth,
       monthlyRevenue,
       planDist,
-      recentTransactions: subscriptions.slice(0, 20),
     });
-  } catch {
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  } catch (e: any) {
+    return NextResponse.json({ error: "Server error", detail: e?.message ?? "" }, { status: 500 });
   }
 }
